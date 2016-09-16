@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/yasker/go-iscsi-helper/util"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -13,6 +15,7 @@ func Test(t *testing.T) { TestingT(t) }
 
 type TestSuite struct {
 	imageFile string
+	localIP   string
 }
 
 var _ = Suite(&TestSuite{})
@@ -37,6 +40,11 @@ func (s *TestSuite) SetUpSuite(c *C) {
 
 	err = exec.Command("mkfs.ext4", "-F", s.imageFile).Run()
 	c.Assert(err, IsNil)
+
+	ips, err := util.GetLocalIPs()
+	c.Assert(err, IsNil)
+	c.Assert(len(ips), Equals, 1)
+	s.localIP = ips[0]
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {

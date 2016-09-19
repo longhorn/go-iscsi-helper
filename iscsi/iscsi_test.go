@@ -1,9 +1,10 @@
-package target
+package iscsi
 
 import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/yasker/go-iscsi-helper/util"
@@ -16,6 +17,7 @@ func Test(t *testing.T) { TestingT(t) }
 type TestSuite struct {
 	imageFile string
 	localIP   string
+	ne        *util.NamespaceExecutor
 }
 
 var _ = Suite(&TestSuite{})
@@ -45,6 +47,9 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(ips), Equals, 1)
 	s.localIP = ips[0]
+
+	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {
@@ -52,27 +57,41 @@ func (s *TestSuite) TearDownSuite(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *TestSuite) TestDaemonBasic(c *C) {
+func (s *TestSuite) TestFlow(c *C) {
 	var err error
+
+	t := "iqn.2016-09.com.rancher:for.all"
+	tid := 1
+	lun := 1
 
 	err = StartDaemon()
 	c.Assert(err, IsNil)
 
-	err = CreateTarget(1, "iqn.2016-09.com.rancher:for.all")
+	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)
 
-	err = AddLunBackedByFile(1, 1, s.imageFile)
+	err = AddLunBackedByFile(tid, lun, s.imageFile)
 	c.Assert(err, IsNil)
 
-	err = BindInitiator(1, "ALL")
+	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
 
-	err = UnbindInitiator(1, "ALL")
+	err = LoginTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
-	err = DeleteLun(1, 1)
+	dev, err := GetDevice(s.localIP, t, lun, s.ne)
+	c.Assert(err, IsNil)
+	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
+
+	err = LogoutTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
-	err = DeleteTarget(1)
+	err = UnbindInitiator(tid, "ALL")
+	c.Assert(err, IsNil)
+
+	err = DeleteLun(tid, lun)
+	c.Assert(err, IsNil)
+
+	err = DeleteTarget(tid)
 	c.Assert(err, IsNil)
 }

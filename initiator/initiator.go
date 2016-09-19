@@ -2,14 +2,18 @@ package initiator
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/yasker/go-iscsi-helper/util"
 )
 
 const (
 	iscsiBinary = "iscsiadm"
+
+	retryInterval = 1 * time.Second
+	retryMax      = 5
 )
 
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
@@ -40,15 +44,24 @@ func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
-func GetDevice(ip, target string) (string, error) {
-	path := "/dev/disk/by-path/ip-" + ip + ":3260-iscsi-" + target + "-lun-0"
-	if _, err := os.Stat(path); err != nil {
-		return "", fmt.Errorf("Cannot find device for %v and %v: %v",
-			ip, target, err)
+func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
+	var err error
+
+	dev := ""
+	for i := 0; i < retryMax; i++ {
+		path := fmt.Sprintf("/dev/disk/by-path/ip-%s:3260-iscsi-%s-lun-%s", ip, target, strconv.Itoa(lun))
+		opts := []string{
+			"-fnve",
+			path,
+		}
+		dev, err = ne.Execute("readlink", opts)
+		if err == nil {
+			break
+		}
+		time.Sleep(retryInterval)
 	}
-	dev, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return "", err
 	}
-	return dev, nil
+	return strings.TrimSpace(dev), nil
 }

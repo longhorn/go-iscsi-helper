@@ -5,21 +5,35 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/go-iscsi-helper/util"
 )
 
 const (
 	iscsiBinary = "iscsiadm"
 )
 
-func LoginTarget(ip, target string) error {
+func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
 		"-p", ip,
 		"--login",
 	}
-	_, err := util.Execute(iscsiBinary, opts)
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+		"--logout",
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
 	if err != nil {
 		return err
 	}
@@ -37,18 +51,4 @@ func GetDevice(ip, target string) (string, error) {
 		return "", err
 	}
 	return dev, nil
-}
-
-func LogoutTarget(ip, target string) error {
-	opts := []string{
-		"-m", "node",
-		"-T", target,
-		"-p", ip,
-		"--logout",
-	}
-	_, err := util.Execute(iscsiBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
 }

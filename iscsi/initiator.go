@@ -16,6 +16,36 @@ const (
 	retryMax      = 5
 )
 
+func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "discovery",
+		"-t", "sendtargets",
+		"-p", ip,
+	}
+	output, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(output, target) {
+		return fmt.Errorf("Cannot find target %s in discovered targets %s", target, output)
+	}
+	return nil
+}
+
+func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-o", "delete",
+		"-p", ip,
+		"-T", target,
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"-m", "node",

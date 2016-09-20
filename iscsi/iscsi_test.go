@@ -76,6 +76,21 @@ func (s *TestSuite) TestFlow(c *C) {
 	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
 
+	err = DiscoverTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	c.Assert(err, NotNil)
+
+	err = LoginTarget(s.localIP, t, s.ne)
+	c.Assert(err, NotNil)
+
+	err = DiscoverTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
 	err = LoginTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
@@ -84,6 +99,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
 
 	err = LogoutTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
 	err = UnbindInitiator(tid, "ALL")

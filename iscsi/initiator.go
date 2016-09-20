@@ -1,6 +1,7 @@
 package iscsi
 
 import (
+	"bufio"
 	"fmt"
 	"strconv"
 	"strings"
@@ -79,12 +80,7 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 
 	dev := ""
 	for i := 0; i < retryMax; i++ {
-		path := fmt.Sprintf("/dev/disk/by-path/ip-%s:3260-iscsi-%s-lun-%s", ip, target, strconv.Itoa(lun))
-		opts := []string{
-			"-fnve",
-			path,
-		}
-		dev, err = ne.Execute("readlink", opts)
+		dev, err = findScsiDevice(ip, target, lun, ne)
 		if err == nil {
 			break
 		}
@@ -94,4 +90,64 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 		return "", err
 	}
 	return strings.TrimSpace(dev), nil
+}
+
+func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
+	dev := ""
+
+	opts := []string{
+		"-m", "session",
+		"-P", "3",
+	}
+	output, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return "", err
+	}
+	/*
+		Now we got something like this in output, and need to parse it
+		Target: iqn.2016-09.com.rancher:for.all (non-flash)
+			Current Portal: 172.17.0.2:3260,1
+			Persistent Portal: 172.17.0.2:3260,1
+			...
+			Attached SCSI devices:
+			...
+			scsi12 Channel 00 Id 0 Lun: 0
+			scsi12 Channel 00 Id 0 Lun: 1
+				Attached scsi disk sdb		State: running
+		...
+		Target: ...
+	*/
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	targetLine := "Target: " + target
+	lunLine := "Lun: " + strconv.Itoa(lun)
+	diskPrefix := "Attached scsi disk"
+	stateLine := "State:"
+	inTarget := false
+	inLun := false
+	for scanner.Scan() {
+		if !inTarget && strings.Contains(scanner.Text(), targetLine) {
+			inTarget = true
+			continue
+		}
+		if inTarget && strings.Contains(scanner.Text(), lunLine) {
+			inLun = true
+			continue
+		}
+		// The line we need
+		if inLun {
+			line := scanner.Text()
+			if !strings.Contains(line, diskPrefix) {
+				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s", line)
+			}
+			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
+			line = strings.TrimPrefix(line, diskPrefix)
+			dev = strings.TrimSpace(line)
+			break
+		}
+	}
+	if dev == "" {
+		return "", fmt.Errorf("Cannot find iscsi device")
+	}
+	dev = "/dev/" + dev
+	return dev, nil
 }

@@ -50,6 +50,9 @@ func (s *TestSuite) SetUpSuite(c *C) {
 
 	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
 	c.Assert(err, IsNil)
+
+	err = StartDaemon()
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {
@@ -60,12 +63,9 @@ func (s *TestSuite) TearDownSuite(c *C) {
 func (s *TestSuite) TestFlow(c *C) {
 	var err error
 
-	t := "iqn.2016-09.com.rancher:for.all"
+	t := "iqn.2014-09.com.rancher:flow"
 	tid := 1
 	lun := 1
-
-	err = StartDaemon()
-	c.Assert(err, IsNil)
 
 	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)
@@ -87,6 +87,48 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = LoginTarget(s.localIP, t, s.ne)
 	c.Assert(err, NotNil)
+
+	err = DiscoverTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = LoginTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	dev, err := GetDevice(s.localIP, t, lun, s.ne)
+	c.Assert(err, IsNil)
+	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
+
+	err = LogoutTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	err = UnbindInitiator(tid, "ALL")
+	c.Assert(err, IsNil)
+
+	err = DeleteLun(tid, lun)
+	c.Assert(err, IsNil)
+
+	err = DeleteTarget(tid)
+	c.Assert(err, IsNil)
+}
+
+func (s *TestSuite) TestAio(c *C) {
+	var err error
+
+	t := "iqn.2014-09.com.rancher:aio"
+	tid := 1
+	lun := 1
+
+	err = CreateTarget(tid, t)
+	c.Assert(err, IsNil)
+
+	err = AddLunBackedByAIOFile(tid, lun, s.imageFile)
+	c.Assert(err, IsNil)
+
+	err = BindInitiator(tid, "ALL")
+	c.Assert(err, IsNil)
 
 	err = DiscoverTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)

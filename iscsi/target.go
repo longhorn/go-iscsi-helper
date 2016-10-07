@@ -87,7 +87,7 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 		"--bstype", bstype,
 	}
 	if bsopts != "" {
-		opts = append(opts, "--bsopts", "\""+bsopts+"\"")
+		opts = append(opts, "--bsopts", bsopts)
 	}
 	_, err := util.Execute(tgtBinary, opts)
 	if err != nil {

@@ -6,11 +6,17 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rancher/convoy/util"
 )
 
 var (
+	TgtdRetryCounts   = 5
+	TgtdRetryInterval = 1 * time.Second
+)
+
+const (
 	tgtBinary = "tgtadm"
 )
 
@@ -148,6 +154,19 @@ func StartDaemon(debug bool) error {
 		return err
 	}
 	go startDaemon(logf, debug)
+
+	// Wait until daemon is up
+	done := false
+	for i := 0; i < TgtdRetryCounts; i++ {
+		if CheckTargetForBackingStore("rdwr") {
+			done = true
+			break
+		}
+		time.Sleep(TgtdRetryInterval)
+	}
+	if !done {
+		return fmt.Errorf("Fail to start tgtd daemon")
+	}
 	return nil
 }
 

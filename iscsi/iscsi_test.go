@@ -51,7 +51,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
 	c.Assert(err, IsNil)
 
-	err = StartDaemon()
+	err = StartDaemon(false)
 	c.Assert(err, IsNil)
 }
 

@@ -2,6 +2,8 @@ package iscsi
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -139,12 +141,31 @@ func UnbindInitiator(tid int, initiator string) error {
 }
 
 // StartDaemon will start tgtd daemon, prepare for further commands
-func StartDaemon() error {
-	_, err := util.Execute("tgtd", []string{})
+func StartDaemon(debug bool) error {
+	logFile := "/var/log/tgtd.log"
+	logf, err := os.Create(logFile)
 	if err != nil {
 		return err
 	}
+	go startDaemon(logf, debug)
 	return nil
+}
+
+func startDaemon(logf *os.File, debug bool) {
+	opts := []string{
+		"-f",
+	}
+	if debug {
+		opts = append(opts, "-d", "1")
+	}
+	cmd := exec.Command("tgtd", opts...)
+	cmd.Stdout = logf
+	cmd.Stderr = logf
+
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func CheckTargetForBackingStore(name string) bool {

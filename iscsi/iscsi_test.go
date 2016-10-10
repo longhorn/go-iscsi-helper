@@ -67,6 +67,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	tid := 1
 	lun := 1
 
+	err = CheckForInitiatorExistence(s.ne)
+	c.Assert(err, IsNil)
+
 	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)
 
@@ -120,6 +123,9 @@ func (s *TestSuite) TestAio(c *C) {
 	t := "iqn.2014-09.com.rancher:aio"
 	tid := 1
 	lun := 1
+
+	err = CheckForInitiatorExistence(s.ne)
+	c.Assert(err, IsNil)
 
 	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)

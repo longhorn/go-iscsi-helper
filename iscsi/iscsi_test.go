@@ -53,6 +53,9 @@ func (s *TestSuite) SetUpSuite(c *C) {
 
 	err = StartDaemon(false)
 	c.Assert(err, IsNil)
+
+	err = StartDaemon(false)
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {

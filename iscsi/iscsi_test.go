@@ -64,7 +64,10 @@ func (s *TestSuite) TearDownSuite(c *C) {
 }
 
 func (s *TestSuite) TestFlow(c *C) {
-	var err error
+	var (
+		err    error
+		exists bool
+	)
 
 	t := "iqn.2014-09.com.rancher:flow"
 	tid := 1
@@ -82,6 +85,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
 
+	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, false)
+
 	err = DiscoverTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
@@ -99,6 +105,9 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = LoginTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, true)
 
 	dev, err := GetDevice(s.localIP, t, lun, s.ne)
 	c.Assert(err, IsNil)
@@ -106,6 +115,9 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = LogoutTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, false)
 
 	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)

@@ -72,9 +72,14 @@ func (s *TestSuite) TestFlow(c *C) {
 	t := "iqn.2014-09.com.rancher:flow"
 	tid := 1
 	lun := 1
+	tmptid := -1
 
 	err = CheckForInitiatorExistence(s.ne)
 	c.Assert(err, IsNil)
+
+	tmptid, err = GetTargetTid(t)
+	c.Assert(err, IsNil)
+	c.Assert(tmptid, Equals, -1)
 
 	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)
@@ -84,6 +89,10 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
+
+	tmptid, err = GetTargetTid(t)
+	c.Assert(err, IsNil)
+	c.Assert(tmptid, Equals, 1)
 
 	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
 	c.Assert(exists, Equals, false)
@@ -130,6 +139,11 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = DeleteTarget(tid)
 	c.Assert(err, IsNil)
+
+	tmptid, err = GetTargetTid(t)
+	c.Assert(err, IsNil)
+	c.Assert(tmptid, Equals, -1)
+
 }
 
 func (s *TestSuite) TestAio(c *C) {

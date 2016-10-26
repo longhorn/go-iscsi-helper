@@ -97,6 +97,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
 	c.Assert(exists, Equals, false)
 
+	exists = IsTargetLoggedIn("", t, s.ne)
+	c.Assert(exists, Equals, false)
+
 	err = DiscoverTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
@@ -118,6 +121,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
 	c.Assert(exists, Equals, true)
 
+	exists = IsTargetLoggedIn("", t, s.ne)
+	c.Assert(exists, Equals, true)
+
 	dev, err := GetDevice(s.localIP, t, lun, s.ne)
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
@@ -126,6 +132,21 @@ func (s *TestSuite) TestFlow(c *C) {
 	c.Assert(err, IsNil)
 
 	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, false)
+
+	exists = IsTargetLoggedIn("", t, s.ne)
+	c.Assert(exists, Equals, false)
+
+	err = LoginTarget(s.localIP, t, s.ne)
+	c.Assert(err, IsNil)
+
+	exists = IsTargetLoggedIn("", t, s.ne)
+	c.Assert(exists, Equals, true)
+
+	err = LogoutTarget("", t, s.ne)
+	c.Assert(err, IsNil)
+
+	exists = IsTargetLoggedIn("", t, s.ne)
 	c.Assert(exists, Equals, false)
 
 	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)

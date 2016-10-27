@@ -60,6 +60,19 @@ func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error
 	return nil
 }
 
+func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"-m", "node",

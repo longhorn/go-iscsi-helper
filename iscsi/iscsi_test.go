@@ -103,8 +103,14 @@ func (s *TestSuite) TestFlow(c *C) {
 	err = DiscoverTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
 
+	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, true)
+
 	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, false)
 
 	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
 	c.Assert(err, NotNil)
@@ -114,6 +120,9 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = DiscoverTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, true)
 
 	err = LoginTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
@@ -130,6 +139,9 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = LogoutTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, true)
 
 	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
 	c.Assert(exists, Equals, false)
@@ -151,6 +163,9 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
+
+	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	c.Assert(exists, Equals, false)
 
 	err = UnbindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)

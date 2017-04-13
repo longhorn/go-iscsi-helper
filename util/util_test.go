@@ -14,9 +14,9 @@ type TestSuite struct {
 var _ = Suite(&TestSuite{})
 
 func (s *TestSuite) TestGetLocalIPs(c *C) {
-	ips, err := GetLocalIPs()
+	ip, err := GetIPToHost()
 	c.Assert(err, IsNil)
-	c.Assert(ips, NotNil)
+	c.Assert(ip, NotNil)
 }
 
 func (s *TestSuite) TestNamespaceExecutor(c *C) {

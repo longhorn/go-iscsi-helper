@@ -43,10 +43,8 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	err = exec.Command("mkfs.ext4", "-F", s.imageFile).Run()
 	c.Assert(err, IsNil)
 
-	ips, err := util.GetLocalIPs()
+	s.localIP, err = util.GetIPToHost()
 	c.Assert(err, IsNil)
-	c.Assert(len(ips), Equals, 1)
-	s.localIP = ips[0]
 
 	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
 	c.Assert(err, IsNil)

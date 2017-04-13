@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -21,7 +22,7 @@ func getIPFromAddrs(addrs []net.Addr) string {
 	for _, addr := range addrs {
 		if ip, ok := addr.(*net.IPNet); ok && !ip.IP.IsLoopback() {
 			if ip.IP.To4() != nil {
-				return ip.IP.String()
+				return strings.Split(ip.IP.String(), "/")[0]
 			}
 		}
 	}

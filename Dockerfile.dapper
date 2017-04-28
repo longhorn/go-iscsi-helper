@@ -6,7 +6,7 @@ ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
 ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
-ENV DAPPER_SOURCE /go/src/github.com/yasker/go-iscsi-helper
+ENV DAPPER_SOURCE /go/src/github.com/rancher/go-iscsi-helper
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 
@@ -36,7 +36,7 @@ RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/
 
 # Build TGT
 RUN cd /usr/src && \
-    git clone https://github.com/yasker/tgt.git && \
+    git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
     git checkout 4574d18db4eeebb0f761fe272ccbe1e3ff681b7f && \
     ./scripts/build-pkg.sh deb && \

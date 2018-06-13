@@ -36,3 +36,18 @@ func (s *TestSuite) TestNamespaceExecutor(c *C) {
 	_, err = ne.Execute("mount", []string{})
 	c.Assert(err, IsNil)
 }
+
+func (s *TestSuite) TestFindDockerdProcess(c *C) {
+	procPath := "/host/proc"
+	finder := NewProcessFinder(procPath)
+
+	dockerdProcess := "dockerd"
+	ps, err := finder.FindAncestorByName(dockerdProcess)
+	c.Assert(err, IsNil)
+	c.Assert(ps, NotNil)
+
+	notExistProcess := "dockerdddd"
+	ps, err = finder.FindAncestorByName(notExistProcess)
+	c.Assert(err, NotNil)
+	c.Assert(ps, IsNil)
+}

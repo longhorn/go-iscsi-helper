@@ -59,6 +59,9 @@ func (s *TestSuite) SetUpSuite(c *C) {
 func (s *TestSuite) TearDownSuite(c *C) {
 	err := exec.Command("rm", "-rf", testRoot).Run()
 	c.Assert(err, IsNil)
+
+	err = ShutdownTgtd()
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TestFlow(c *C) {

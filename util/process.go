@@ -6,6 +6,11 @@ import (
 	linuxproc "github.com/c9s/goprocinfo/linux"
 )
 
+const (
+	DockerdProcess    = "dockerd"
+	ContainerdProcess = "containerd"
+)
+
 type ProcessFinder struct {
 	procPath string
 }
@@ -44,4 +49,17 @@ func (p *ProcessFinder) FindAncestorByName(ancestorProcess string) (*linuxproc.P
 	}
 
 	return nil, fmt.Errorf("Failed to find the ancestor process: %s", ancestorProcess)
+}
+
+func (p *ProcessFinder) FindHostNamespacePID() (uint64, error) {
+	var proc *linuxproc.ProcessStatus
+	var err1, err2 error
+	proc, err1 = p.FindAncestorByName(DockerdProcess)
+	if err1 != nil {
+		proc, err2 = p.FindAncestorByName(ContainerdProcess)
+		if err2 != nil {
+			return 1, fmt.Errorf("failed to find proc dockerd or containerd the ancestor process: %v, %v", err1, err2)
+		}
+	}
+	return proc.Pid, nil
 }

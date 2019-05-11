@@ -51,15 +51,16 @@ func (p *ProcessFinder) FindAncestorByName(ancestorProcess string) (*linuxproc.P
 	return nil, fmt.Errorf("Failed to find the ancestor process: %s", ancestorProcess)
 }
 
-func (p *ProcessFinder) FindHostNamespacePID() (uint64, error) {
+func GetHostNamespacePath(hostProcPath string) (string, error) {
+	pf := NewProcessFinder(hostProcPath)
 	var proc *linuxproc.ProcessStatus
 	var err1, err2 error
-	proc, err1 = p.FindAncestorByName(DockerdProcess)
+	proc, err1 = pf.FindAncestorByName(DockerdProcess)
 	if err1 != nil {
-		proc, err2 = p.FindAncestorByName(ContainerdProcess)
+		proc, err2 = pf.FindAncestorByName(ContainerdProcess)
 		if err2 != nil {
-			return 1, fmt.Errorf("failed to find proc dockerd or containerd the ancestor process: %v, %v", err1, err2)
+			return fmt.Sprintf("%s/%d/ns/", hostProcPath, 1), fmt.Errorf("failed to find proc dockerd or containerd, fall back to use pid 1 for host namespace path: %v, %v", err1, err2)
 		}
 	}
-	return proc.Pid, nil
+	return fmt.Sprintf("%s/%d/ns/", hostProcPath, proc.Pid), nil
 }

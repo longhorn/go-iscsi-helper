@@ -41,8 +41,10 @@ func (s *TestSuite) TestFindDockerdProcess(c *C) {
 	procPath := "/host/proc"
 	finder := NewProcessFinder(procPath)
 
-	dockerdProcess := "dockerd"
-	ps, err := finder.FindAncestorByName(dockerdProcess)
+	ps, err := finder.FindAncestorByName(DockerdProcess)
+	if err != nil {
+		ps, err = finder.FindAncestorByName(ContainerdProcess)
+	}
 	c.Assert(err, IsNil)
 	c.Assert(ps, NotNil)
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rancher/go-iscsi-helper/util"
+	"github.com/longhorn/go-iscsi-helper/util"
 
 	. "gopkg.in/check.v1"
 )

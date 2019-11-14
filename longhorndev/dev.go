@@ -23,7 +23,7 @@ const (
 	DevPath         = "/dev/longhorn/"
 
 	WaitInterval = time.Second
-	WaitCount    = 60
+	WaitCount    = 30
 
 	SwitchWaitInterval = time.Second
 	SwitchWaitCount    = 15

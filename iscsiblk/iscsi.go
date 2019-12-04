@@ -244,6 +244,19 @@ func DeleteTarget(target string, targetID int) error {
 		if err := iscsi.DeleteLun(targetID, TargetLunID); err != nil {
 			return err
 		}
+
+		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)
+		if err != nil {
+			return err
+		}
+		for sid, cidList := range sessionConnectionsMap {
+			for _, cid := range cidList {
+				if err := iscsi.CloseConnection(tid, sid, cid); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := iscsi.DeleteTarget(targetID); err != nil {
 			return err
 		}

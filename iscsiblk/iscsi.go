@@ -19,8 +19,9 @@ var (
 
 	TargetLunID = 1
 
-	RetryCounts   = 5
-	RetryInterval = 3
+	RetryCounts           = 5
+	RetryIntervalSCSI     = 3 * time.Second
+	RetryIntervalTargetID = 500 * time.Millisecond
 
 	HostProc = "/host/proc"
 )
@@ -34,10 +35,9 @@ type ScsiDevice struct {
 	BSOpts      string
 }
 
-func NewScsiDevice(name, backingFile, bsType, bsOpts string, tID int) (*ScsiDevice, error) {
+func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
 	dev := &ScsiDevice{
 		Target:      GetTargetName(name),
-		TargetID:    tID,
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
@@ -58,9 +58,23 @@ func SetupTarget(dev *ScsiDevice) error {
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
-	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
-		return err
+
+	for i := 0; i < RetryCounts; i++ {
+		tid, err := iscsi.FindNextAvailableTargetID()
+		if err != nil {
+			return err
+		}
+		logrus.Infof("go-iscsi-helper: found available target id %v", tid)
+		err = iscsi.CreateTarget(tid, dev.Target)
+		if err == nil {
+			dev.TargetID = tid
+			break
+		}
+		logrus.Infof("go-iscsi-helper: failed to use target id %v, retrying with a new target ID: err %v", tid, err)
+		time.Sleep(RetryIntervalTargetID)
+		continue
 	}
+
 	if err := iscsi.AddLun(dev.TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
@@ -113,7 +127,7 @@ func StartScsi(dev *ScsiDevice) error {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
 		}
 
-		time.Sleep(time.Duration(RetryInterval) * time.Second)
+		time.Sleep(RetryIntervalSCSI)
 	}
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
@@ -128,7 +142,7 @@ func StartScsi(dev *ScsiDevice) error {
 			deviceFound = true
 			break
 		}
-		time.Sleep(time.Duration(RetryInterval) * time.Second)
+		time.Sleep(RetryIntervalSCSI)
 	}
 	if !deviceFound {
 		return fmt.Errorf("Failed to wait for device %s to show up", dev.Device)
@@ -184,7 +198,7 @@ func LogoutTarget(target string) error {
 				loggingOut = true
 				break
 			}
-			time.Sleep(time.Duration(RetryInterval) * time.Second)
+			time.Sleep(RetryIntervalSCSI)
 		}
 		// Wait for device to logout
 		if loggingOut {
@@ -194,7 +208,7 @@ func LogoutTarget(target string) error {
 					err = nil
 					break
 				}
-				time.Sleep(time.Duration(RetryInterval) * time.Second)
+				time.Sleep(RetryIntervalSCSI)
 			}
 		}
 		if err != nil {
@@ -223,7 +237,7 @@ func LogoutTarget(target string) error {
 				err = nil
 				break
 			}
-			time.Sleep(time.Duration(RetryInterval) * time.Second)
+			time.Sleep(RetryIntervalSCSI)
 		}
 		if err != nil {
 			return err

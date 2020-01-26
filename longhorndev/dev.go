@@ -47,7 +47,7 @@ type DeviceService interface {
 	GetEndpoint() string
 	Enabled() bool
 
-	Start(tID int) error
+	Start() error
 	Shutdown() (int, error)
 	PrepareUpgrade() error
 	FinishUpgrade() error
@@ -75,7 +75,7 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 	return dev, nil
 }
 
-func (d *LonghornDevice) Start(tID int) error {
+func (d *LonghornDevice) Start() error {
 	d.Lock()
 	defer d.Unlock()
 
@@ -89,7 +89,7 @@ func (d *LonghornDevice) Start(tID int) error {
 	}
 
 	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsiblk.NewScsiDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts, tID)
+	scsiDev, err := iscsiblk.NewScsiDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package iscsiblk
+package iscsidev
 
 import (
 	"fmt"

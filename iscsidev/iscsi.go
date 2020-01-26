@@ -26,17 +26,18 @@ var (
 	HostProc = "/host/proc"
 )
 
-type ScsiDevice struct {
+type Device struct {
 	Target      string
-	TargetID    int
 	Device      string
 	BackingFile string
 	BSType      string
 	BSOpts      string
+
+	targetID int
 }
 
-func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
-	dev := &ScsiDevice{
+func NewDevice(name, backingFile, bsType, bsOpts string) (*Device, error) {
+	dev := &Device{
 		Target:      GetTargetName(name),
 		BackingFile: backingFile,
 		BSType:      bsType,
@@ -53,8 +54,8 @@ func GetTargetName(name string) string {
 	return "iqn.2014-09.com.rancher:" + Volume2ISCSIName(name)
 }
 
-func SetupTarget(dev *ScsiDevice) error {
-	// Setup target
+func (dev *Device) CreateTarget() error {
+	// Start tgtd daemon if it's not already running
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func SetupTarget(dev *ScsiDevice) error {
 		logrus.Infof("go-iscsi-helper: found available target id %v", tid)
 		err = iscsi.CreateTarget(tid, dev.Target)
 		if err == nil {
-			dev.TargetID = tid
+			dev.targetID = tid
 			break
 		}
 		logrus.Infof("go-iscsi-helper: failed to use target id %v, retrying with a new target ID: err %v", tid, err)
@@ -75,16 +76,16 @@ func SetupTarget(dev *ScsiDevice) error {
 		continue
 	}
 
-	if err := iscsi.AddLun(dev.TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
-	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
+	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {
 		return err
 	}
 	return nil
 }
 
-func StartScsi(dev *ScsiDevice) error {
+func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
@@ -102,10 +103,6 @@ func StartScsi(dev *ScsiDevice) error {
 
 	localIP, err := util.GetIPToHost()
 	if err != nil {
-		return err
-	}
-
-	if err := SetupTarget(dev); err != nil {
 		return err
 	}
 
@@ -150,19 +147,15 @@ func StartScsi(dev *ScsiDevice) error {
 	return nil
 }
 
-func StopScsi(volumeName string, targetID int) error {
+func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
 	defer lock.Unlock()
 
-	target := GetTargetName(volumeName)
-	if err := LogoutTarget(target); err != nil {
+	if err := LogoutTarget(dev.Target); err != nil {
 		return fmt.Errorf("Fail to logout target: %v", err)
-	}
-	if err := DeleteTarget(target, targetID); err != nil {
-		return fmt.Errorf("Fail to delete target: %v", err)
 	}
 	return nil
 }
@@ -246,16 +239,16 @@ func LogoutTarget(target string) error {
 	return nil
 }
 
-func DeleteTarget(target string, targetID int) error {
-	if tid, err := iscsi.GetTargetTid(target); err == nil && tid != -1 {
-		if tid != targetID {
-			logrus.Fatalf("BUG: Invalid TID %v found for %v", tid, target)
+func (dev *Device) DeleteTarget() error {
+	if tid, err := iscsi.GetTargetTid(dev.Target); err == nil && tid != -1 {
+		if tid != dev.targetID {
+			logrus.Fatalf("BUG: Invalid TID %v found for %v", tid, dev.Target)
 		}
-		logrus.Infof("Shutdown SCSI target %v", target)
-		if err := iscsi.UnbindInitiator(targetID, "ALL"); err != nil {
+		logrus.Infof("Shutdown SCSI target %v", dev.Target)
+		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteLun(targetID, TargetLunID); err != nil {
+		if err := iscsi.DeleteLun(tid, TargetLunID); err != nil {
 			return err
 		}
 
@@ -271,30 +264,30 @@ func DeleteTarget(target string, targetID int) error {
 			}
 		}
 
-		if err := iscsi.DeleteTarget(targetID); err != nil {
+		if err := iscsi.DeleteTarget(tid); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func UpdateScsiBackingStore(dev *ScsiDevice, bsType, bsOpts string) error {
+func (dev *Device) UpdateScsiBackingStore(bsType, bsOpts string) error {
 	dev.BSType = bsType
 	dev.BSOpts = bsOpts
 	return nil
 }
 
-func UpdateTarget(dev *ScsiDevice) error {
-	if err := DeleteTarget(dev.Target, dev.TargetID); err != nil {
+func (dev *Device) RecreateTarget() error {
+	if err := dev.DeleteTarget(); err != nil {
 		return err
 	}
-	if err := SetupTarget(dev); err != nil {
+	if err := dev.CreateTarget(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func UpdateScsi(dev *ScsiDevice) error {
+func (dev *Device) ReloadInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
@@ -310,10 +303,6 @@ func UpdateScsi(dev *ScsiDevice) error {
 	}
 	ip, err := util.GetIPToHost()
 	if err != nil {
-		return err
-	}
-
-	if err := UpdateTarget(dev); err != nil {
 		return err
 	}
 

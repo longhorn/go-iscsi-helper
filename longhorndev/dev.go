@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/go-iscsi-helper/iscsiblk"
+	"github.com/longhorn/go-iscsi-helper/iscsidev"
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -36,7 +36,7 @@ type LonghornDevice struct {
 	frontend string
 	endpoint string
 
-	scsiDevice *iscsiblk.ScsiDevice
+	scsiDevice *iscsidev.ScsiDevice
 }
 
 type DeviceService interface {
@@ -89,7 +89,7 @@ func (d *LonghornDevice) Start() error {
 	}
 
 	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsiblk.NewScsiDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
+	scsiDev, err := iscsidev.NewScsiDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (d *LonghornDevice) Start() error {
 
 	switch d.frontend {
 	case FrontendTGTBlockDev:
-		if err := iscsiblk.StartScsi(d.scsiDevice); err != nil {
+		if err := iscsidev.StartScsi(d.scsiDevice); err != nil {
 			return err
 		}
 		if err := d.createDev(); err != nil {
@@ -109,7 +109,7 @@ func (d *LonghornDevice) Start() error {
 		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.Device)
 		break
 	case FrontendTGTISCSI:
-		if err := iscsiblk.SetupTarget(d.scsiDevice); err != nil {
+		if err := iscsidev.SetupTarget(d.scsiDevice); err != nil {
 			return err
 		}
 
@@ -139,13 +139,13 @@ func (d *LonghornDevice) Shutdown() (int, error) {
 		if err := util.RemoveDevice(dev); err != nil {
 			return 0, fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
 		}
-		if err := iscsiblk.StopScsi(d.name, d.scsiDevice.TargetID); err != nil {
+		if err := iscsidev.StopScsi(d.name, d.scsiDevice.TargetID); err != nil {
 			return 0, fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
 		}
 		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
 		break
 	case FrontendTGTISCSI:
-		if err := iscsiblk.DeleteTarget(d.scsiDevice.Target, d.scsiDevice.TargetID); err != nil {
+		if err := iscsidev.DeleteTarget(d.scsiDevice.Target, d.scsiDevice.TargetID); err != nil {
 			return 0, fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
 		}
 		logrus.Infof("device %v: SCSI target %v ", d.name, d.scsiDevice.Target)

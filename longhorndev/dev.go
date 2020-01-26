@@ -49,7 +49,6 @@ type DeviceService interface {
 
 	Start() error
 	Shutdown() error
-	PrepareUpgrade() error
 	FinishUpgrade() error
 	Expand(size int64) error
 }
@@ -265,6 +264,13 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 	if err = d.ReloadSocketConnection(); err != nil {
 		return err
 	}
+
+	bsOpts := fmt.Sprintf("size=%v", d.size)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
+	if err != nil {
+		return err
+	}
+	d.scsiDevice = scsiDev
 
 	return nil
 }

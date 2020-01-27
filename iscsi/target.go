@@ -194,6 +194,10 @@ func startDaemon(logf *os.File, debug bool) {
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 	if err := cmd.Run(); err != nil {
+		if CheckTargetForBackingStore("rdwr") {
+			fmt.Fprintf(mw, "go-iscsi-helper: tgtd is already running\n")
+			return
+		}
 		fmt.Fprintf(mw, "go-iscsi-helper: command failed: %v\n", err)
 		panic(err)
 	}

@@ -70,7 +70,7 @@ func (s *TestSuite) TestFlow(c *C) {
 		exists bool
 	)
 
-	t := "iqn.2014-09.com.rancher:flow"
+	t := "iqn.2014-09.io.longhorn:flow"
 	tid := 1
 	lun := 1
 	tmptid := -1
@@ -186,7 +186,7 @@ func (s *TestSuite) TestFlow(c *C) {
 func (s *TestSuite) TestAio(c *C) {
 	var err error
 
-	t := "iqn.2014-09.com.rancher:aio"
+	t := "iqn.2014-09.io.longhorn:aio"
 	tid := 1
 	lun := 1
 

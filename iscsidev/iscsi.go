@@ -251,9 +251,6 @@ func (dev *Device) DeleteTarget() error {
 		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteLun(tid, TargetLunID); err != nil {
-			return err
-		}
 
 		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)
 		if err != nil {
@@ -265,6 +262,10 @@ func (dev *Device) DeleteTarget() error {
 					return err
 				}
 			}
+		}
+
+		if err := iscsi.DeleteLun(tid, TargetLunID); err != nil {
+			return err
 		}
 
 		if err := iscsi.DeleteTarget(tid); err != nil {

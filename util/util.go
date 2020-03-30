@@ -108,7 +108,7 @@ func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error)
 
 func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name string, args []string) (string, error) {
 	if ne.ns == "" {
-		return ExecuteWithoutTimeout(name, args)
+		return ExecuteWithTimeout(timeout, name, args)
 	}
 	return ExecuteWithTimeout(timeout, NSBinary, ne.prepareCommandArgs(name, args))
 }

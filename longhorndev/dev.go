@@ -107,7 +107,7 @@ func (d *LonghornDevice) Start() error {
 
 		d.endpoint = d.getDev()
 
-		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.Device)
+		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
 		break
 	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.CreateTarget(); err != nil {
@@ -218,7 +218,7 @@ func (d *LonghornDevice) createDev() error {
 		}
 	}
 
-	if err := util.DuplicateDevice(d.scsiDevice.Device, dev); err != nil {
+	if err := util.DuplicateDevice(d.scsiDevice.KernelDevice, dev); err != nil {
 		return err
 	}
 

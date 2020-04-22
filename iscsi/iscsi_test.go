@@ -136,7 +136,8 @@ func (s *TestSuite) TestFlow(c *C) {
 
 	dev, err := GetDevice(s.localIP, t, lun, s.ne)
 	c.Assert(err, IsNil)
-	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
+	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
+	c.Assert(dev.Major, Not(Equals), 0)
 
 	err = LogoutTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)
@@ -210,7 +211,8 @@ func (s *TestSuite) TestAio(c *C) {
 
 	dev, err := GetDevice(s.localIP, t, lun, s.ne)
 	c.Assert(err, IsNil)
-	c.Assert(strings.HasPrefix(dev, "/dev/sd"), Equals, true)
+	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
+	c.Assert(dev.Major, Not(Equals), 0)
 
 	err = LogoutTarget(s.localIP, t, s.ne)
 	c.Assert(err, IsNil)

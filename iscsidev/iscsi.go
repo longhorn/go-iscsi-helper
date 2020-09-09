@@ -109,9 +109,8 @@ func (dev *Device) StartInitator() error {
 	}
 
 	// Setup initiator
-	err = nil
 	for i := 0; i < RetryCounts; i++ {
-		err = iscsi.DiscoverTarget(localIP, dev.Target, ne)
+		err := iscsi.DiscoverTarget(localIP, dev.Target, ne)
 		if iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
 			break
 		}

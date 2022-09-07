@@ -100,6 +100,35 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 	return nil
 }
 
+// UpdateLun will update parameters for the LUN
+func UpdateLun(tid int, lun int, params map[string]string) error {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "update",
+		"--mode", "logicalunit",
+		"--tid", strconv.Itoa(tid),
+		"--lun", strconv.Itoa(lun),
+	}
+	if len(params) != 0 {
+		paramStr := ""
+		for k, v := range params {
+			paramStr += fmt.Sprintf("%s=%s,", k, v)
+		}
+		strings.TrimSuffix(paramStr, ",")
+		opts = append(opts, "--params", paramStr)
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetLunThinProvisioning will set param thin_provisioning to true for the LUN
+func SetLunThinProvisioning(tid int, lun int) error {
+	return UpdateLun(tid, lun, map[string]string{"thin_provisioning": "1"})
+}
+
 // DeleteLun will remove a LUN from an target
 func DeleteLun(tid int, lun int) error {
 	opts := []string{

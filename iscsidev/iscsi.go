@@ -81,6 +81,10 @@ func (dev *Device) CreateTarget() (err error) {
 	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
+	// Cannot modify the parameters for the LUNs during the adding stage
+	if err := iscsi.SetLunThinProvisioning(dev.targetID, TargetLunID); err != nil {
+		return err
+	}
 	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {
 		return err
 	}

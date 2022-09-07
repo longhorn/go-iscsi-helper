@@ -88,6 +88,9 @@ func (s *TestSuite) TestFlow(c *C) {
 	err = AddLunBackedByFile(tid, lun, s.imageFile)
 	c.Assert(err, IsNil)
 
+	err = SetLunThinProvisioning(tid, lun)
+	c.Assert(err, IsNil)
+
 	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
 
@@ -198,6 +201,9 @@ func (s *TestSuite) TestAio(c *C) {
 	c.Assert(err, IsNil)
 
 	err = AddLun(tid, lun, s.imageFile, "aio", "")
+	c.Assert(err, IsNil)
+
+	err = SetLunThinProvisioning(tid, lun)
 	c.Assert(err, IsNil)
 
 	err = BindInitiator(tid, "ALL")

@@ -31,16 +31,18 @@ type Device struct {
 	BackingFile  string
 	BSType       string
 	BSOpts       string
+	SectorSize   int64
 
 	targetID int
 }
 
-func NewDevice(name, backingFile, bsType, bsOpts string) (*Device, error) {
+func NewDevice(name, backingFile, bsType, bsOpts string, sectorSize int64) (*Device, error) {
 	dev := &Device{
 		Target:      GetTargetName(name),
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
+		SectorSize:  sectorSize,
 	}
 	return dev, nil
 }
@@ -78,7 +80,7 @@ func (dev *Device) CreateTarget() (err error) {
 		return err
 	}
 
-	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts, dev.SectorSize); err != nil {
 		return err
 	}
 	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {

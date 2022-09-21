@@ -79,7 +79,7 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 // specified file, using AIO backing-store
 func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string, sectorSize int64) error {
 	if !CheckTargetForBackingStore(bstype) {
-		return fmt.Errorf("Backing-store %s is not supported", bstype)
+		return fmt.Errorf("backing-store %s is not supported", bstype)
 	}
 	opts := []string{
 		"--lld", "iscsi",
@@ -175,7 +175,7 @@ func StartDaemon(debug bool) error {
 		time.Sleep(TgtdRetryInterval)
 	}
 	if !daemonIsRunning {
-		return fmt.Errorf("Fail to start tgtd daemon")
+		return fmt.Errorf("failed to start tgtd daemon")
 	}
 	return nil
 }
@@ -244,7 +244,7 @@ func GetTargetTid(name string) (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Fail to parse %s, %v", tidString, err)
+				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
 			}
 			break
 		}
@@ -367,7 +367,7 @@ func FindNextAvailableTargetID() (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Fail to parse %s, %v", tidString, err)
+				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
 			}
 			existingTids[tid] = struct{}{}
 		}

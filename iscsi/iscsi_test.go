@@ -197,7 +197,7 @@ func (s *TestSuite) TestAio(c *C) {
 	err = CreateTarget(tid, t)
 	c.Assert(err, IsNil)
 
-	err = AddLun(tid, lun, s.imageFile, "aio", "")
+	err = AddLun(tid, lun, s.imageFile, "aio", "", 4096)
 	c.Assert(err, IsNil)
 
 	err = BindInitiator(tid, "ALL")

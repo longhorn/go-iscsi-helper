@@ -77,7 +77,7 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 
 // AddLun will add a LUN in an existing target, which backing by
 // specified file, using AIO backing-store
-func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string, sectorSize int64) error {
+func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) error {
 	if !CheckTargetForBackingStore(bstype) {
 		return fmt.Errorf("backing-store %s is not supported", bstype)
 	}
@@ -89,7 +89,6 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string, 
 		"--lun", strconv.Itoa(lun),
 		"-b", backingFile,
 		"--bstype", bstype,
-		"--blocksize", strconv.FormatInt(sectorSize, 10),
 	}
 	if bsopts != "" {
 		opts = append(opts, "--bsopts", bsopts)

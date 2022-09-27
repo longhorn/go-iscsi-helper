@@ -29,11 +29,10 @@ const (
 
 type LonghornDevice struct {
 	*sync.RWMutex
-	name       string //VolumeName
-	size       int64
-	sectorSize int64
-	frontend   string
-	endpoint   string
+	name     string //VolumeName
+	size     int64
+	frontend string
+	endpoint string
 
 	scsiDevice *iscsidev.Device
 }
@@ -60,15 +59,14 @@ type DeviceCreator interface {
 
 type LonghornDeviceCreator struct{}
 
-func (ldc *LonghornDeviceCreator) NewDevice(name string, size, sectorSize int64, frontend string) (DeviceService, error) {
+func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend string) (DeviceService, error) {
 	if name == "" || size == 0 {
 		return nil, fmt.Errorf("invalid parameter for creating Longhorn device")
 	}
 	dev := &LonghornDevice{
-		RWMutex:    &sync.RWMutex{},
-		name:       name,
-		size:       size,
-		sectorSize: sectorSize,
+		RWMutex: &sync.RWMutex{},
+		name:    name,
+		size:    size,
 	}
 	if err := dev.SetFrontend(frontend); err != nil {
 		return nil, err
@@ -95,7 +93,7 @@ func (d *LonghornDevice) InitDevice() error {
 // call with lock hold
 func (d *LonghornDevice) initScsiDevice() error {
 	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts, d.sectorSize)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
 	if err != nil {
 		return err
 	}

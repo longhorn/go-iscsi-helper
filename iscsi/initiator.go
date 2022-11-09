@@ -29,11 +29,40 @@ const (
 	scanModeManual = "manual"
 	scanModeAuto   = "auto"
 	ScanTimeout    = 10 * time.Second
+
+	shellBinary = "sh"
 )
 
 func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"--version",
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateScsiDeviceTimeout(devName string, timeout int64, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-c",
+		fmt.Sprintf("echo %v > /sys/block/%v/device/timeout", timeout, devName),
+	}
+	_, err := ne.Execute(shellBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-o", "update",
+		"-n", "node.session.err_timeo.abort_timeout",
+		"-v", strconv.FormatInt(timeout, 10),
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
 	if err != nil {

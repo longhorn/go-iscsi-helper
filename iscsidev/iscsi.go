@@ -7,6 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/nsfilelock"
+
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/util"
 )
@@ -24,19 +26,37 @@ var (
 	HostProc = "/host/proc"
 )
 
+type ScsiDeviceParameters struct {
+	ScsiTimeout int64
+}
+
+type IscsiDeviceParameters struct {
+	IscsiAbortTimeout int64
+}
+
 type Device struct {
 	Target       string
 	KernelDevice *util.KernelDevice
-	BackingFile  string
-	BSType       string
-	BSOpts       string
+
+	ScsiDeviceParameters
+	IscsiDeviceParameters
+
+	BackingFile string
+	BSType      string
+	BSOpts      string
 
 	targetID int
 }
 
-func NewDevice(name, backingFile, bsType, bsOpts string) (*Device, error) {
+func NewDevice(name, backingFile, bsType, bsOpts string, scsiTimeout, iscsiAbortTimeout int64) (*Device, error) {
 	dev := &Device{
-		Target:      GetTargetName(name),
+		Target: GetTargetName(name),
+		ScsiDeviceParameters: ScsiDeviceParameters{
+			ScsiTimeout: scsiTimeout,
+		},
+		IscsiDeviceParameters: IscsiDeviceParameters{
+			IscsiAbortTimeout: iscsiAbortTimeout,
+		},
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
@@ -126,10 +146,16 @@ func (dev *Device) StartInitator() error {
 
 		time.Sleep(RetryIntervalSCSI)
 	}
+	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, ne); err != nil {
+		return err
+	}
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
 	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+		return err
+	}
+	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne); err != nil {
 		return err
 	}
 

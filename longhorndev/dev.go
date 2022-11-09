@@ -22,17 +22,17 @@ const (
 
 	WaitInterval = time.Second
 	WaitCount    = 30
-
-	SwitchWaitInterval = time.Second
-	SwitchWaitCount    = 15
 )
 
 type LonghornDevice struct {
 	*sync.RWMutex
-	name     string //VolumeName
-	size     int64
-	frontend string
-	endpoint string
+	name                      string //VolumeName
+	size                      int64
+	frontend                  string
+	endpoint                  string
+	scsiTimeout               int64
+	iscsiAbortTimeout         int64
+	iscsiTargetRequestTimeout int64
 
 	scsiDevice *iscsidev.Device
 }
@@ -59,14 +59,17 @@ type DeviceCreator interface {
 
 type LonghornDeviceCreator struct{}
 
-func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend string) (DeviceService, error) {
+func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend string, scsiTimeout, iscsiAbortTimeout, iscsiTargetRequestTimeout int64) (DeviceService, error) {
 	if name == "" || size == 0 {
 		return nil, fmt.Errorf("invalid parameter for creating Longhorn device")
 	}
 	dev := &LonghornDevice{
-		RWMutex: &sync.RWMutex{},
-		name:    name,
-		size:    size,
+		RWMutex:                   &sync.RWMutex{},
+		name:                      name,
+		size:                      size,
+		scsiTimeout:               scsiTimeout,
+		iscsiAbortTimeout:         iscsiAbortTimeout,
+		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
 	}
 	if err := dev.SetFrontend(frontend); err != nil {
 		return nil, err
@@ -92,8 +95,8 @@ func (d *LonghornDevice) InitDevice() error {
 
 // call with lock hold
 func (d *LonghornDevice) initScsiDevice() error {
-	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
+	bsOpts := fmt.Sprintf("size=%v;request_timeout=%v", d.size, d.iscsiTargetRequestTimeout)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts, d.scsiTimeout, d.iscsiAbortTimeout)
 	if err != nil {
 		return err
 	}

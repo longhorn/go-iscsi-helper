@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -272,7 +274,7 @@ func GetTargetTid(name string) (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
+				return -1, errors.Wrapf(err, "BUG: Failed to parse %s, %v", tidString)
 			}
 			break
 		}
@@ -395,7 +397,7 @@ func FindNextAvailableTargetID() (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
+				return -1, errors.Wrapf(err, "BUG: Failed to parse %s", tidString)
 			}
 			existingTids[tid] = struct{}{}
 		}

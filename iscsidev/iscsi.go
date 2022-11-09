@@ -1,11 +1,10 @@
 package iscsidev
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/longhorn/nsfilelock"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/iscsi"
@@ -94,7 +93,7 @@ func (dev *Device) CreateTarget() (err error) {
 func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("failed to lock: %v", err)
+		return errors.Wrapf(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
@@ -124,7 +123,7 @@ func (dev *Device) StartInitator() error {
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
 		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
-			logrus.Warnf("Failed to cleanup nodes for %v: %v", dev.Target, err)
+			logrus.Warnf("Failed to clean up nodes for %v: %v", dev.Target, err)
 		} else {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
 		}
@@ -144,12 +143,12 @@ func (dev *Device) StartInitator() error {
 func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("failed to lock: %v", err)
+		return errors.Wrapf(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
 	if err := LogoutTarget(dev.Target); err != nil {
-		return fmt.Errorf("failed to logout target: %v", err)
+		return errors.Wrapf(err, "failed to logout target")
 	}
 	return nil
 }
@@ -197,7 +196,7 @@ func LogoutTarget(target string) error {
 			}
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to logout target: %v", err)
+			return errors.Wrapf(err, "failed to logout target")
 		}
 		/*
 		 * Immediately delete target after logout may result in error:

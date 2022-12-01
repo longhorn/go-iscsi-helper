@@ -22,6 +22,8 @@ const (
 	tgtBinary = "tgtadm"
 
 	maxTargetID = 4095
+
+	logFile = "/var/log/tgtd.log"
 )
 
 // CreateTarget will create a iSCSI target using the name specified. If name is
@@ -36,10 +38,7 @@ func CreateTarget(tid int, name string) error {
 		"-T", name,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // DeleteTarget will remove a iSCSI target specified by tid
@@ -51,10 +50,7 @@ func DeleteTarget(tid int) error {
 		"--tid", strconv.Itoa(tid),
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // AddLunBackedByFile will add a LUN in an existing target, which backing by
@@ -69,10 +65,7 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 		"-b", backingFile,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // AddLun will add a LUN in an existing target, which backing by
@@ -94,10 +87,7 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 		opts = append(opts, "--bsopts", bsopts)
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // DeleteLun will remove a LUN from an target
@@ -110,10 +100,7 @@ func DeleteLun(tid int, lun int) error {
 		"--lun", strconv.Itoa(lun),
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // BindInitiator will add permission to allow certain initiator(s) to connect to
@@ -127,10 +114,7 @@ func BindInitiator(tid int, initiator string) error {
 		"-I", initiator,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // UnbindInitiator will remove permission to allow certain initiator(s) to connect to
@@ -144,10 +128,7 @@ func UnbindInitiator(tid int, initiator string) error {
 		"-I", initiator,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // StartDaemon will start tgtd daemon, prepare for further commands
@@ -157,7 +138,6 @@ func StartDaemon(debug bool) error {
 		return nil
 	}
 
-	logFile := "/var/log/tgtd.log"
 	logf, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -257,10 +237,7 @@ func ShutdownTgtd() error {
 		"--mode", "system",
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetTargetConnections(tid int) (map[string][]string, error) {
@@ -334,10 +311,7 @@ func CloseConnection(tid int, sid, cid string) error {
 		"--cid", cid,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func FindNextAvailableTargetID() (int, error) {

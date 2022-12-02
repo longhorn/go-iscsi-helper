@@ -180,6 +180,29 @@ func (dev *Device) StopInitiator() error {
 	return nil
 }
 
+func (dev *Device) RefreshInitiator() error {
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return errors.Wrap(err, "failed to lock")
+	}
+	defer lock.Unlock()
+
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	if err != nil {
+		return err
+	}
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	ip, err := util.GetIPToHost()
+	if err != nil {
+		return err
+	}
+
+	return iscsi.RescanTarget(ip, dev.Target, ne)
+}
+
 func LogoutTarget(target string) error {
 	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
 	if err != nil {

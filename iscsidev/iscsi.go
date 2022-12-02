@@ -297,3 +297,7 @@ func (dev *Device) DeleteTarget() error {
 	}
 	return nil
 }
+
+func (dev *Device) ExpandTarget(size int64) error {
+	return iscsi.ExpandLun(dev.targetID, TargetLunID, size)
+}

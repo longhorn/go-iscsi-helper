@@ -321,6 +321,12 @@ func (dev *Device) DeleteTarget() error {
 	return nil
 }
 
+func (dev *Device) UpdateScsiBackingStore(bsType, bsOpts string) error {
+	dev.BSType = bsType
+	dev.BSOpts = bsOpts
+	return nil
+}
+
 func (dev *Device) ExpandTarget(size int64) error {
 	return iscsi.ExpandLun(dev.targetID, TargetLunID, size)
 }

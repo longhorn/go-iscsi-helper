@@ -40,7 +40,7 @@ RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 4574d18db4eeebb0f761fe272ccbe1e3ff681b7f && \
+    git checkout 3a8bc4823b5390e046f7aa8231ed262c0365c42c && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 

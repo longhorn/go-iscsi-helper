@@ -114,7 +114,7 @@ func (dev *Device) CreateTarget() (err error) {
 func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return errors.Wrapf(err, "failed to lock")
+		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
@@ -170,7 +170,7 @@ func (dev *Device) StartInitator() error {
 func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return errors.Wrapf(err, "failed to lock")
+		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 

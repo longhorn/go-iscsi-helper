@@ -139,7 +139,10 @@ func (dev *Device) StartInitator() error {
 			break
 		}
 
-		logrus.WithError(err).Warnf("Failed to discover")
+		// The err might be nil because iscsi.DiscoverTarget returns error
+		// according to the result of parsing error messages.
+		logrus.Warnf("Failed to discover due to %v", err)
+
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
@@ -295,7 +298,7 @@ func (dev *Device) DeleteTarget() error {
 			if !strings.Contains(err.Error(), types.TgtadmAclNoexist) {
 				return err
 			}
-			logrus.WithError(err).Warnf("failed to unbind initiator target id %v", tid)
+			logrus.WithError(err).Warnf("Failed to unbind initiator target id %v", tid)
 		}
 
 		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)

@@ -136,6 +136,14 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 				return err
 			}
 			logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
+		} else {
+			if err := d.scsiDevice.ReloadTargetID(); err != nil {
+				return err
+			}
+			if err := d.scsiDevice.ReloadInitiator(); err != nil {
+				return err
+			}
+			logrus.Infof("device %v: iSCSI device %s reloaded the target and the initiator", d.name, d.scsiDevice.KernelDevice.Name)
 		}
 
 		d.endpoint = d.getDev()
@@ -149,6 +157,11 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 				return err
 			}
 			logrus.Infof("device %v: iSCSI target %s created", d.name, d.scsiDevice.Target)
+		} else {
+			if err := d.scsiDevice.ReloadTargetID(); err != nil {
+				return err
+			}
+			logrus.Infof("device %v: iSCSI target %s reloaded the target ID", d.name, d.scsiDevice.Target)
 		}
 
 		d.endpoint = d.scsiDevice.Target

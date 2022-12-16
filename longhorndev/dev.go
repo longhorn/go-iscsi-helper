@@ -413,7 +413,7 @@ func (d *LonghornDevice) GetFrontend() string {
 	return d.frontend
 }
 
-func (d *LonghornDevice) Expand(size int64) error {
+func (d *LonghornDevice) Expand(size int64) (err error) {
 	d.Lock()
 	defer d.Unlock()
 
@@ -422,13 +422,18 @@ func (d *LonghornDevice) Expand(size int64) error {
 	} else if d.size == size {
 		return nil
 	}
-	d.size = size
+
+	defer func() {
+		if err == nil {
+			d.size = size
+		}
+	}()
 
 	if d.scsiDevice == nil {
 		logrus.Info("Device: No need to do anything for the expansion since the frontend is shutdown")
 		return nil
 	}
-	if err := d.scsiDevice.UpdateScsiBackingStore("longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
+	if err := d.scsiDevice.UpdateScsiBackingStore("longhorn", fmt.Sprintf("size=%v", size)); err != nil {
 		return err
 	}
 

@@ -4,7 +4,7 @@ github.com/c9s/goprocinfo/linux
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
 github.com/longhorn/nsfilelock
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/sirupsen/logrus v1.3.0
 github.com/sirupsen/logrus

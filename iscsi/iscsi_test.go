@@ -140,10 +140,7 @@ func (s *TestSuite) TestFlow(c *C) {
 	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	ne, err := util.NewNamespaceExecutor("/host/proc/1/ns/")
-	c.Assert(err, IsNil)
-
-	dev, err := GetDevice(s.localIP, t, lun, s.nsexec, ne)
+	dev, err := GetDevice(s.localIP, t, lun, s.nsexec)
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
 	c.Assert(dev.Major, Not(Equals), 0)
@@ -221,10 +218,7 @@ func (s *TestSuite) TestAio(c *C) {
 	err = LoginTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	ne, err := util.NewNamespaceExecutor("/host/proc/1/ns/")
-	c.Assert(err, IsNil)
-
-	dev, err := GetDevice(s.localIP, t, lun, s.nsexec, ne)
+	dev, err := GetDevice(s.localIP, t, lun, s.nsexec)
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
 	c.Assert(dev.Major, Not(Equals), 0)

@@ -13,8 +13,6 @@ import (
 
 	lhns "github.com/longhorn/go-common-libs/ns"
 	lhtypes "github.com/longhorn/go-common-libs/types"
-
-	"github.com/longhorn/go-iscsi-helper/util"
 )
 
 var (
@@ -32,8 +30,6 @@ const (
 	scanModeManual = "manual"
 	scanModeAuto   = "auto"
 	ScanTimeout    = 10 * time.Second
-
-	shellBinary = "sh"
 )
 
 func CheckForInitiatorExistence(nsexec *lhns.Executor) error {
@@ -44,14 +40,9 @@ func CheckForInitiatorExistence(nsexec *lhns.Executor) error {
 	return err
 }
 
-func UpdateScsiDeviceTimeout(devName string, timeout int64, ne *util.NamespaceExecutor) error {
-	opts := []string{
-		"-c",
-		fmt.Sprintf("echo %v > /sys/block/%v/device/timeout", timeout, devName),
-	}
-	// TODO: replace with namespace joiner
-	_, err := ne.Execute(shellBinary, opts)
-	return err
+func UpdateScsiDeviceTimeout(devName string, timeout int64, nsexec *lhns.Executor) error {
+	deviceTimeoutFile := filepath.Join("/sys/block", devName, "device", "timeout")
+	return lhns.WriteFile(deviceTimeoutFile, fmt.Sprint(timeout))
 }
 
 func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, nsexec *lhns.Executor) error {
@@ -159,12 +150,12 @@ func LogoutTarget(ip, target string, nsexec *lhns.Executor) error {
 	return err
 }
 
-func GetDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
+func GetDevice(ip, target string, lun int, nsexec *lhns.Executor) (*lhtypes.BlockDeviceInfo, error) {
 	var err error
 
-	var dev *util.KernelDevice
+	var dev *lhtypes.BlockDeviceInfo
 	for i := 0; i < DeviceWaitRetryCounts; i++ {
-		dev, err = findScsiDevice(ip, target, lun, nsexec, ne)
+		dev, err = findScsiDevice(ip, target, lun, nsexec)
 		if err == nil {
 			break
 		}
@@ -235,7 +226,7 @@ func getIscsiNodeSessionScanMode(ip, target string, nsexec *lhns.Executor) (stri
 	return scanModeAuto, nil
 }
 
-func findScsiDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
+func findScsiDevice(ip, target string, lun int, nsexec *lhns.Executor) (*lhtypes.BlockDeviceInfo, error) {
 	name := ""
 
 	opts := []string{
@@ -309,7 +300,7 @@ func findScsiDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.
 
 	// TODO: replace with namespace joiner
 	// now that we know the device is mapped, we can get it's (major:minor)
-	devices, err := util.GetKnownDevices(ne)
+	devices, err := lhns.GetSystemBlockDevices()
 	if err != nil {
 		return nil, err
 	}
@@ -319,36 +310,43 @@ func findScsiDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.
 		return nil, fmt.Errorf("cannot find kernel device for iSCSI device: %s", name)
 	}
 
-	return dev, nil
+	return &dev, nil
 }
 
-func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
+func CleanupScsiNodes(target string) error {
 	for _, dir := range ScsiNodesDirs {
-		if _, err := ne.Execute("ls", []string{dir}); err != nil {
+		if _, err := lhns.GetFileInfo(dir); err != nil {
 			continue
 		}
+
 		targetDir := filepath.Join(dir, target)
-		if _, err := ne.Execute("ls", []string{targetDir}); err != nil {
+		if _, err := lhns.GetFileInfo(targetDir); err != nil {
 			continue
 		}
+
 		// Remove all empty files in the directory
-		output, err := ne.Execute("find", []string{targetDir})
+		emptyFilePaths, err := lhns.GetEmptyFiles(targetDir)
 		if err != nil {
-			return errors.Wrapf(err, "failed to search iSCSI directory %v", targetDir)
+			return err
 		}
-		scanner := bufio.NewScanner(strings.NewReader(output))
-		for scanner.Scan() {
-			file := scanner.Text()
-			output, err := ne.Execute("stat", []string{file})
+
+		for _, emptyFilePath := range emptyFilePaths {
+			err := lhns.DeletePath(emptyFilePath)
 			if err != nil {
-				return errors.Wrapf(err, "failed to check iSCSI node file %v", file)
+				return errors.Wrapf(err, "failed to clean up empty iSCSI node file %v", emptyFilePath)
 			}
-			if strings.Contains(output, "regular empty file") {
-				if _, err := ne.Execute("rm", []string{file}); err != nil {
-					return errors.Wrapf(err, "failed to clean up empty iSCSI node file %v", file)
-				}
-				// We're trying to clean up the upper level directory as well, but won't mind if we fail
-				_, _ = ne.Execute("rmdir", []string{filepath.Dir(file)})
+		}
+
+		// Try to remove the upper level directory containing empty files.
+		// We don't mind if it fails.
+		dirContainEmptyFiles := make(map[string]bool)
+		for _, emptyFilePath := range emptyFilePaths {
+			dirContainEmptyFiles[filepath.Dir(emptyFilePath)] = true
+		}
+		for dir := range dirContainEmptyFiles {
+			err := lhns.DeleteDirectory(dir)
+			if err != nil {
+				logrus.WithError(err).Warnf("Failed to clean up iSCSI node directory %v", dir)
 			}
 		}
 	}

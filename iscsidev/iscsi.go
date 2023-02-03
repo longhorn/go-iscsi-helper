@@ -8,8 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/nsfilelock"
-
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
@@ -39,7 +37,7 @@ type IscsiDeviceParameters struct {
 
 type Device struct {
 	Target       string
-	KernelDevice *util.KernelDevice
+	KernelDevice *lhtypes.BlockDeviceInfo
 
 	ScsiDeviceParameters
 	IscsiDeviceParameters
@@ -138,16 +136,11 @@ func (dev *Device) CreateTarget() (err error) {
 }
 
 func (dev *Device) StartInitator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
+	lock := lhns.NewLock(LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
-
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(lhtypes.HostProcDirectory))
-	if err != nil {
-		return err
-	}
 
 	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
@@ -169,7 +162,7 @@ func (dev *Device) StartInitator() error {
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
-		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
+		if err := iscsi.CleanupScsiNodes(dev.Target); err != nil {
 			logrus.WithError(err).Warnf("Failed to clean up nodes for %v", dev.Target)
 		} else {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
@@ -183,10 +176,10 @@ func (dev *Device) StartInitator() error {
 	if err := iscsi.LoginTarget(localIP, dev.Target, dev.nsexec); err != nil {
 		return err
 	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec, ne); err != nil {
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec); err != nil {
 		return err
 	}
-	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne); err != nil {
+	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, dev.nsexec); err != nil {
 		return err
 	}
 
@@ -197,16 +190,11 @@ func (dev *Device) StartInitator() error {
 // updating the timeout. It is mainly responsible for initializing the struct
 // field `dev.KernelDevice`.
 func (dev *Device) ReloadInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
+	lock := lhns.NewLock(LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
-
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(lhtypes.HostProcDirectory))
-	if err != nil {
-		return err
-	}
 
 	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
@@ -228,15 +216,15 @@ func (dev *Device) ReloadInitiator() error {
 	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, dev.nsexec); err != nil {
 		return err
 	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec, ne); err != nil {
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec); err != nil {
 		return err
 	}
 
-	return iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne)
+	return iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, dev.nsexec)
 }
 
 func (dev *Device) StopInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
+	lock := lhns.NewLock(LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
@@ -249,7 +237,7 @@ func (dev *Device) StopInitiator() error {
 }
 
 func (dev *Device) RefreshInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
+	lock := lhns.NewLock(LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}

@@ -90,6 +90,36 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 	return err
 }
 
+// UpdateLun will update parameters for the LUN
+func UpdateLun(tid int, lun int, params map[string]string) error {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "update",
+		"--mode", "logicalunit",
+		"--tid", strconv.Itoa(tid),
+		"--lun", strconv.Itoa(lun),
+	}
+	if len(params) != 0 {
+		paramStr := ""
+		for k, v := range params {
+			paramStr += fmt.Sprintf("%s=%s,", k, v)
+		}
+		strings.TrimSuffix(paramStr, ",")
+		opts = append(opts, "--params", paramStr)
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	return err
+}
+
+// DisableWriteCache will set param write-cache to false for the LUN
+func DisableWriteCache(tid int, lun int) error {
+	// Mode page 8 is the caching mode page
+	// Refer to "Caching Mode page (08h)" in SCSI Commands Reference Manual for more information.
+	// https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf
+	// https://github.com/fujita/tgt/blob/master/scripts/tgt-admin#L418
+	return UpdateLun(tid, lun, map[string]string{"mode_page": "8:0:18:0x10:0:0xff:0xff:0:0:0xff:0xff:0xff:0xff:0x80:0x14:0:0:0:0:0:0"})
+}
+
 // DeleteLun will remove a LUN from an target
 func DeleteLun(tid int, lun int) error {
 	opts := []string{

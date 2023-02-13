@@ -82,6 +82,14 @@ func (dev *Device) CreateTarget() (err error) {
 	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
+
+	// Longhorn reads and writes data with direct io rather than buffer io, so
+	// the write cache is actually disabled in the implementation.
+	// Explicitly disable the write cache for meeting the SCSI specification.
+	if err := iscsi.DisableWriteCache(dev.targetID, TargetLunID); err != nil {
+		return err
+	}
+
 	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {
 		return err
 	}

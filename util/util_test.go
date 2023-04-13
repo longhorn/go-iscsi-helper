@@ -44,9 +44,13 @@ func (s *TestSuite) TestFindDockerdProcess(c *C) {
 	ps, err := finder.FindAncestorByName(DockerdProcess)
 	if err != nil {
 		ps, err = finder.FindAncestorByName(ContainerdProcess)
+		if err != nil {
+			ps, err = finder.FindAncestorByName(ContainerdProcessShim)
+		}
 	}
 	c.Assert(err, IsNil)
 	c.Assert(ps, NotNil)
+	c.Assert(fmt.Sprintf("%s/%d/ns/", procPath, ps.Pid), Equals, GetHostNamespacePath(procPath))
 
 	notExistProcess := "dockerdddd"
 	ps, err = finder.FindAncestorByName(notExistProcess)

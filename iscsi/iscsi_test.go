@@ -9,6 +9,9 @@ import (
 
 	"github.com/longhorn/go-iscsi-helper/util"
 
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -17,7 +20,7 @@ func Test(t *testing.T) { TestingT(t) }
 type TestSuite struct {
 	imageFile string
 	localIP   string
-	ne        *util.NamespaceExecutor
+	nsexec    *lhns.Executor
 }
 
 var _ = Suite(&TestSuite{})
@@ -46,7 +49,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.localIP, err = util.GetIPToHost()
 	c.Assert(err, IsNil)
 
-	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
+	s.nsexec, err = lhns.NewNamespaceExecutor(lhtypes.ProcessNone, lhtypes.HostProcDirectory, []lhtypes.Namespace{})
 	c.Assert(err, IsNil)
 
 	err = StartDaemon(false)
@@ -75,7 +78,7 @@ func (s *TestSuite) TestFlow(c *C) {
 	lun := 1
 	tmptid := -1
 
-	err = CheckForInitiatorExistence(s.ne)
+	err = CheckForInitiatorExistence(s.nsexec)
 	c.Assert(err, IsNil)
 
 	tmptid, err = GetTargetTid(t)
@@ -98,78 +101,81 @@ func (s *TestSuite) TestFlow(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(tmptid, Equals, 1)
 
-	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	exists = IsTargetLoggedIn(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	exists = IsTargetLoggedIn("", t, s.ne)
+	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	err = DiscoverTarget(s.localIP, t, s.ne)
+	err = DiscoverTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	exists = IsTargetDiscovered(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	err = DeleteDiscoveredTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	exists = IsTargetDiscovered(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	err = DeleteDiscoveredTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, NotNil)
 
-	err = LoginTarget(s.localIP, t, s.ne)
+	err = LoginTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, NotNil)
 
-	err = DiscoverTarget(s.localIP, t, s.ne)
+	err = DiscoverTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	exists = IsTargetDiscovered(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	err = LoginTarget(s.localIP, t, s.ne)
+	err = LoginTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	exists = IsTargetLoggedIn(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	exists = IsTargetLoggedIn("", t, s.ne)
+	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	dev, err := GetDevice(s.localIP, t, lun, s.ne)
+	ne, err := util.NewNamespaceExecutor("/host/proc/1/ns/")
+	c.Assert(err, IsNil)
+
+	dev, err := GetDevice(s.localIP, t, lun, s.nsexec, ne)
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
 	c.Assert(dev.Major, Not(Equals), 0)
 
-	err = LogoutTarget(s.localIP, t, s.ne)
+	err = LogoutTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	exists = IsTargetDiscovered(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	exists = IsTargetLoggedIn(s.localIP, t, s.ne)
+	exists = IsTargetLoggedIn(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	exists = IsTargetLoggedIn("", t, s.ne)
+	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	err = LoginTarget(s.localIP, t, s.ne)
+	err = LoginTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetLoggedIn("", t, s.ne)
+	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, true)
 
-	err = LogoutTarget("", t, s.ne)
+	err = LogoutTarget("", t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetLoggedIn("", t, s.ne)
+	exists = IsTargetLoggedIn("", t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
-	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	err = DeleteDiscoveredTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	exists = IsTargetDiscovered(s.localIP, t, s.ne)
+	exists = IsTargetDiscovered(s.localIP, t, s.nsexec)
 	c.Assert(exists, Equals, false)
 
 	err = UnbindInitiator(tid, "ALL")
@@ -194,7 +200,7 @@ func (s *TestSuite) TestAio(c *C) {
 	tid := 1
 	lun := 1
 
-	err = CheckForInitiatorExistence(s.ne)
+	err = CheckForInitiatorExistence(s.nsexec)
 	c.Assert(err, IsNil)
 
 	err = CreateTarget(tid, t)
@@ -209,21 +215,24 @@ func (s *TestSuite) TestAio(c *C) {
 	err = BindInitiator(tid, "ALL")
 	c.Assert(err, IsNil)
 
-	err = DiscoverTarget(s.localIP, t, s.ne)
+	err = DiscoverTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	err = LoginTarget(s.localIP, t, s.ne)
+	err = LoginTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	dev, err := GetDevice(s.localIP, t, lun, s.ne)
+	ne, err := util.NewNamespaceExecutor("/host/proc/1/ns/")
+	c.Assert(err, IsNil)
+
+	dev, err := GetDevice(s.localIP, t, lun, s.nsexec, ne)
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasPrefix(dev.Name, "sd"), Equals, true)
 	c.Assert(dev.Major, Not(Equals), 0)
 
-	err = LogoutTarget(s.localIP, t, s.ne)
+	err = LogoutTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
-	err = DeleteDiscoveredTarget(s.localIP, t, s.ne)
+	err = DeleteDiscoveredTarget(s.localIP, t, s.nsexec)
 	c.Assert(err, IsNil)
 
 	err = UnbindInitiator(tid, "ALL")

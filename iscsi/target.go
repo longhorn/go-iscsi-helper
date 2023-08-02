@@ -106,8 +106,7 @@ func UpdateLun(tid int, lun int, params map[string]string) error {
 		for k, v := range params {
 			paramStr += fmt.Sprintf("%s=%s,", k, v)
 		}
-		strings.TrimSuffix(paramStr, ",")
-		opts = append(opts, "--params", paramStr)
+		opts = append(opts, "--params", strings.TrimSuffix(paramStr, ","))
 	}
 	_, err := util.Execute(tgtBinary, opts)
 	return err

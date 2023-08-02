@@ -13,6 +13,9 @@ import (
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
+
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
 )
 
 var (
@@ -24,8 +27,6 @@ var (
 	RetryCounts           = 5
 	RetryIntervalSCSI     = 3 * time.Second
 	RetryIntervalTargetID = 500 * time.Millisecond
-
-	HostProc = "/host/proc"
 )
 
 type ScsiDeviceParameters struct {
@@ -48,9 +49,17 @@ type Device struct {
 	BSOpts      string
 
 	targetID int
+
+	nsexec *lhns.Executor
 }
 
 func NewDevice(name, backingFile, bsType, bsOpts string, scsiTimeout, iscsiAbortTimeout int64) (*Device, error) {
+	namespaces := []lhtypes.Namespace{lhtypes.NamespaceMnt, lhtypes.NamespaceNet}
+	nsexec, err := lhns.NewNamespaceExecutor(util.ISCSIdProcess, lhtypes.HostProcDirectory, namespaces)
+	if err != nil {
+		return nil, err
+	}
+
 	dev := &Device{
 		Target: GetTargetName(name),
 		ScsiDeviceParameters: ScsiDeviceParameters{
@@ -62,6 +71,7 @@ func NewDevice(name, backingFile, bsType, bsOpts string, scsiTimeout, iscsiAbort
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
+		nsexec:      nsexec,
 	}
 	return dev, nil
 }
@@ -128,18 +138,18 @@ func (dev *Device) CreateTarget() (err error) {
 }
 
 func (dev *Device) StartInitator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(lhtypes.HostProcDirectory))
 	if err != nil {
 		return err
 	}
 
-	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
 	}
 
@@ -150,8 +160,8 @@ func (dev *Device) StartInitator() error {
 
 	// Setup initiator
 	for i := 0; i < RetryCounts; i++ {
-		err := iscsi.DiscoverTarget(localIP, dev.Target, ne)
-		if iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
+		err := iscsi.DiscoverTarget(localIP, dev.Target, dev.nsexec)
+		if iscsi.IsTargetDiscovered(localIP, dev.Target, dev.nsexec) {
 			break
 		}
 
@@ -167,13 +177,13 @@ func (dev *Device) StartInitator() error {
 
 		time.Sleep(RetryIntervalSCSI)
 	}
-	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, ne); err != nil {
+	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, dev.nsexec); err != nil {
 		return err
 	}
-	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
+	if err := iscsi.LoginTarget(localIP, dev.Target, dev.nsexec); err != nil {
 		return err
 	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec, ne); err != nil {
 		return err
 	}
 	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne); err != nil {
@@ -187,18 +197,18 @@ func (dev *Device) StartInitator() error {
 // updating the timeout. It is mainly responsible for initializing the struct
 // field `dev.KernelDevice`.
 func (dev *Device) ReloadInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(lhtypes.HostProcDirectory))
 	if err != nil {
 		return err
 	}
 
-	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
 	}
 
@@ -207,18 +217,18 @@ func (dev *Device) ReloadInitiator() error {
 		return err
 	}
 
-	if err := iscsi.DiscoverTarget(localIP, dev.Target, ne); err != nil {
+	if err := iscsi.DiscoverTarget(localIP, dev.Target, dev.nsexec); err != nil {
 		return err
 	}
 
-	if !iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
+	if !iscsi.IsTargetDiscovered(localIP, dev.Target, dev.nsexec) {
 		return fmt.Errorf("failed to discover target %v for the initiator", dev.Target)
 	}
 
-	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, ne); err != nil {
+	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, dev.nsexec); err != nil {
 		return err
 	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec, ne); err != nil {
 		return err
 	}
 
@@ -226,30 +236,26 @@ func (dev *Device) ReloadInitiator() error {
 }
 
 func (dev *Device) StopInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
-	if err := LogoutTarget(dev.Target); err != nil {
+	if err := LogoutTarget(dev.Target, dev.nsexec); err != nil {
 		return errors.Wrapf(err, "failed to logout target")
 	}
 	return nil
 }
 
 func (dev *Device) RefreshInitiator() error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(lhtypes.HostProcDirectory), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
-	if err != nil {
-		return err
-	}
-	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
 	}
 
@@ -258,19 +264,14 @@ func (dev *Device) RefreshInitiator() error {
 		return err
 	}
 
-	return iscsi.RescanTarget(ip, dev.Target, ne)
+	return iscsi.RescanTarget(ip, dev.Target, dev.nsexec)
 }
 
-func LogoutTarget(target string) error {
-	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
-	if err != nil {
+func LogoutTarget(target string, nsexec *lhns.Executor) error {
+	if err := iscsi.CheckForInitiatorExistence(nsexec); err != nil {
 		return err
 	}
-
-	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
-		return err
-	}
-	if iscsi.IsTargetLoggedIn("", target, ne) {
+	if iscsi.IsTargetLoggedIn("", target, nsexec) {
 		var err error
 		loggingOut := false
 
@@ -278,7 +279,7 @@ func LogoutTarget(target string) error {
 		for i := 0; i < RetryCounts; i++ {
 			// New IP may be different from the IP in the previous record.
 			// https://github.com/longhorn/longhorn/issues/1920
-			err = iscsi.LogoutTarget("", target, ne)
+			err = iscsi.LogoutTarget("", target, nsexec)
 			// Ignore Not Found error
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
@@ -296,7 +297,7 @@ func LogoutTarget(target string) error {
 		if loggingOut {
 			logrus.Infof("Logging out iSCSI device timeout, waiting for logout complete")
 			for i := 0; i < RetryCounts; i++ {
-				if !iscsi.IsTargetLoggedIn("", target, ne) {
+				if !iscsi.IsTargetLoggedIn("", target, nsexec) {
 					err = nil
 					break
 				}
@@ -318,12 +319,12 @@ func LogoutTarget(target string) error {
 		 * 21"(no record found) as valid result
 		 */
 		for i := 0; i < RetryCounts; i++ {
-			if !iscsi.IsTargetDiscovered("", target, ne) {
+			if !iscsi.IsTargetDiscovered("", target, nsexec) {
 				err = nil
 				break
 			}
 
-			err = iscsi.DeleteDiscoveredTarget("", target, ne)
+			err = iscsi.DeleteDiscoveredTarget("", target, nsexec)
 			// Ignore Not Found error
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil

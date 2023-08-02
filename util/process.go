@@ -10,6 +10,7 @@ const (
 	DockerdProcess        = "dockerd"
 	ContainerdProcess     = "containerd"
 	ContainerdProcessShim = "containerd-shim"
+	ISCSIdProcess         = "iscsid"
 )
 
 type ProcessFinder struct {

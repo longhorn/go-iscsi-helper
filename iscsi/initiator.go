@@ -11,6 +11,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -33,11 +36,11 @@ const (
 	shellBinary = "sh"
 )
 
-func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
+func CheckForInitiatorExistence(nsexec *lhns.Executor) error {
 	opts := []string{
 		"--version",
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -46,11 +49,12 @@ func UpdateScsiDeviceTimeout(devName string, timeout int64, ne *util.NamespaceEx
 		"-c",
 		fmt.Sprintf("echo %v > /sys/block/%v/device/timeout", timeout, devName),
 	}
+	// TODO: replace with namespace joiner
 	_, err := ne.Execute(shellBinary, opts)
 	return err
 }
 
-func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, ne *util.NamespaceExecutor) error {
+func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -58,17 +62,17 @@ func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, ne *util.Namesp
 		"-n", "node.session.err_timeo.abort_timeout",
 		"-v", strconv.FormatInt(timeout, 10),
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
-func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
+func DiscoverTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "discovery",
 		"-t", "sendtargets",
 		"-p", ip,
 	}
-	output, err := ne.Execute(iscsiBinary, opts)
+	output, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return err
 	}
@@ -87,7 +91,7 @@ func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
-func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error {
+func DeleteDiscoveredTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-o", "delete",
@@ -96,11 +100,11 @@ func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error
 	if ip != "" {
 		opts = append(opts, "-p", ip)
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
-func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
+func IsTargetDiscovered(ip, target string, nsexec *lhns.Executor) bool {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -108,30 +112,30 @@ func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
 	if ip != "" {
 		opts = append(opts, "-p", ip)
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err == nil
 }
 
-func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
+func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
 		"-p", ip,
 		"--login",
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return err
 	}
 
-	scanMode, err := getIscsiNodeSessionScanMode(ip, target, ne)
+	scanMode, err := getIscsiNodeSessionScanMode(ip, target, nsexec)
 	if err != nil {
 		return errors.Wrap(err, "Failed to get node.session.scan mode")
 	}
 
 	if scanMode == scanModeManual {
 		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
-		if err := manualScanSession(ip, target, ne); err != nil {
+		if err := manualScanSession(ip, target, nsexec); err != nil {
 			return errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
 		}
 	} else {
@@ -142,7 +146,7 @@ func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 }
 
 // LogoutTarget will logout all sessions if ip == ""
-func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
+func LogoutTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -151,16 +155,16 @@ func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	if ip != "" {
 		opts = append(opts, "-p", ip)
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
-func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
+func GetDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
 	var err error
 
 	var dev *util.KernelDevice
 	for i := 0; i < DeviceWaitRetryCounts; i++ {
-		dev, err = findScsiDevice(ip, target, lun, ne)
+		dev, err = findScsiDevice(ip, target, lun, nsexec, ne)
 		if err == nil {
 			break
 		}
@@ -173,11 +177,12 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.Ke
 }
 
 // IsTargetLoggedIn check all portals if ip == ""
-func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
+func IsTargetLoggedIn(ip, target string, nsexec *lhns.Executor) bool {
 	opts := []string{
 		"-m", "session",
 	}
-	output, err := ne.Execute(iscsiBinary, opts)
+
+	output, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return false
 	}
@@ -202,25 +207,25 @@ func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 	return found
 }
 
-func manualScanSession(ip, target string, ne *util.NamespaceExecutor) error {
+func manualScanSession(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
 		"-p", ip,
 		"--rescan",
 	}
-	_, err := ne.ExecuteWithTimeout(ScanTimeout, iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, ScanTimeout)
 	return err
 }
 
-func getIscsiNodeSessionScanMode(ip, target string, ne *util.NamespaceExecutor) (string, error) {
+func getIscsiNodeSessionScanMode(ip, target string, nsexec *lhns.Executor) (string, error) {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
 		"-p", ip,
 		"-o", "show",
 	}
-	output, err := ne.ExecuteWithTimeout(ScanTimeout, iscsiBinary, opts)
+	output, err := nsexec.Execute(iscsiBinary, opts, ScanTimeout)
 	if err != nil {
 		return "", err
 	}
@@ -230,14 +235,14 @@ func getIscsiNodeSessionScanMode(ip, target string, ne *util.NamespaceExecutor) 
 	return scanModeAuto, nil
 }
 
-func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
+func findScsiDevice(ip, target string, lun int, nsexec *lhns.Executor, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
 	name := ""
 
 	opts := []string{
 		"-m", "session",
 		"-P", "3",
 	}
-	output, err := ne.Execute(iscsiBinary, opts)
+	output, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +307,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 		return nil, fmt.Errorf("cannot find iSCSI device")
 	}
 
+	// TODO: replace with namespace joiner
 	// now that we know the device is mapped, we can get it's (major:minor)
 	devices, err := util.GetKnownDevices(ne)
 	if err != nil {
@@ -349,7 +355,7 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
-func RescanTarget(ip, target string, ne *util.NamespaceExecutor) error {
+func RescanTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -358,6 +364,6 @@ func RescanTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	if ip != "" {
 		opts = append(opts, "-p", ip)
 	}
-	_, err := ne.Execute(iscsiBinary, opts)
+	_, err := nsexec.Execute(iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }

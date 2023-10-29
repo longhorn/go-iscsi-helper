@@ -39,7 +39,7 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 	// if pid > 0, we are the parent process
 	if pid != 0 {
 		// close the sending end in the parent so we don't hold it open.
-		close(pipes[1])
+		close_raw(pipes[1])
 
 		bufSize := 256
 		bufIndex := 0
@@ -59,7 +59,7 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 				break
 			}
 		}
-		close(pipes[0])
+		close_raw(pipes[0])
 		// -1 to strip terminating nul
 		if buf[bufIndex-1] != 0 {
 			return nil, errors.New("invalid termination character, not NUL")
@@ -75,9 +75,8 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 				return nil, err
 			}
 			return &unmarshalled, nil
-		} else {
-			return nil, errors.Errorf("unknown response: %s", out)
 		}
+		return nil, errors.Errorf("unknown response: %s", out)
 	}
 
 	// child process executes here
@@ -119,7 +118,7 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 		}
 		written += newly_written
 	}
-	close(pipes[1])
+	close_raw(pipes[1])
 
 	// kill forked process immediately, doing no cleanup.
 	unix.RawSyscallNoError(unix.SYS_EXIT_GROUP, 0, 0, 0)
@@ -178,7 +177,8 @@ func setns(fd int, nstype int) (err error) {
 	return
 }
 
-func close(fd int) (err error) {
+// linter doesn't like this function being named close, even though it's different from the builtin...
+func close_raw(fd int) (err error) {
 	out, _, err := unix.RawSyscall(unix.SYS_CLOSE, uintptr(fd), 0, 0)
 	if out == 0 {
 		err = nil
@@ -193,10 +193,10 @@ func switchNs(mountNs *byte, netNs *byte) error {
 	}
 	err = setns(fd, unix.CLONE_NEWNS)
 	if err != nil {
-		close(fd)
+		close_raw(fd)
 		return err
 	}
-	err = close(fd)
+	err = close_raw(fd)
 	if err != nil {
 		return err
 	}
@@ -210,10 +210,10 @@ func switchNs(mountNs *byte, netNs *byte) error {
 	}
 	err = setns(fd, unix.CLONE_NEWNET)
 	if err != nil {
-		close(fd)
+		close_raw(fd)
 		return err
 	}
-	err = close(fd)
+	err = close_raw(fd)
 	if err != nil {
 		return err
 	}

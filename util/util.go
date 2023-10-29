@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 )
 
 const (
-	NSBinary    = "nsenter"
 	LSBLKBinary = "lsblk"
 )
 
@@ -80,52 +78,54 @@ func NewNamespaceExecutor(ns string) (*NamespaceExecutor, error) {
 	ne := &NamespaceExecutor{
 		ns: ns,
 	}
-
 	if ns == "" {
 		return ne, nil
 	}
-	mntNS := filepath.Join(ns, "mnt")
-	netNS := filepath.Join(ns, "net")
-	if _, err := Execute(NSBinary, []string{"-V"}); err != nil {
-		return nil, errors.Wrap(err, "cannot find nsenter for namespace switching")
+	_, err := ForkAndSwitchToNamespace(ns, func() (*interface{}, error) {
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	if _, err := Execute(NSBinary, []string{"--mount=" + mntNS, "mount"}); err != nil {
-		return nil, errors.Wrapf(err, "invalid mount namespace %v", mntNS)
-	}
-	if _, err := Execute(NSBinary, []string{"--net=" + netNS, "ip", "addr"}); err != nil {
-		return nil, errors.Wrapf(err, "invalid net namespace %v", netNS)
-	}
+
 	return ne, nil
 }
 
-func (ne *NamespaceExecutor) prepareCommandArgs(name string, args []string) []string {
-	cmdArgs := []string{
-		"--mount=" + filepath.Join(ne.ns, "mnt"),
-		"--net=" + filepath.Join(ne.ns, "net"),
-		name,
-	}
-	return append(cmdArgs, args...)
+func (ne *NamespaceExecutor) GetNamespace() string {
+	return ne.ns
 }
 
 func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error) {
 	if ne.ns == "" {
 		return Execute(name, args)
 	}
-	return Execute(NSBinary, ne.prepareCommandArgs(name, args))
+	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+		out, err := Execute(name, args)
+		return &out, err
+	})
+	return *out, err
 }
 
 func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name string, args []string) (string, error) {
 	if ne.ns == "" {
 		return ExecuteWithTimeout(timeout, name, args)
 	}
-	return ExecuteWithTimeout(timeout, NSBinary, ne.prepareCommandArgs(name, args))
+	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+		out, err := ExecuteWithTimeout(timeout, name, args)
+		return &out, err
+	})
+	return *out, err
 }
 
 func (ne *NamespaceExecutor) ExecuteWithoutTimeout(name string, args []string) (string, error) {
 	if ne.ns == "" {
 		return ExecuteWithoutTimeout(name, args)
 	}
-	return ExecuteWithoutTimeout(NSBinary, ne.prepareCommandArgs(name, args))
+	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+		out, err := ExecuteWithoutTimeout(name, args)
+		return &out, err
+	})
+	return *out, err
 }
 
 func Execute(binary string, args []string) (string, error) {
@@ -187,13 +187,12 @@ func (ne *NamespaceExecutor) ExecuteWithStdin(name string, args []string, stdinS
 	if ne.ns == "" {
 		return ExecuteWithStdin(name, args, stdinString)
 	}
-	cmdArgs := []string{
-		"--mount=" + filepath.Join(ne.ns, "mnt"),
-		"--net=" + filepath.Join(ne.ns, "net"),
-		name,
-	}
-	cmdArgs = append(cmdArgs, args...)
-	return ExecuteWithStdin(NSBinary, cmdArgs, stdinString)
+
+	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+		out, err := ExecuteWithStdin(name, args, stdinString)
+		return &out, err
+	})
+	return *out, err
 }
 
 func ExecuteWithStdin(binary string, args []string, stdinString string) (string, error) {

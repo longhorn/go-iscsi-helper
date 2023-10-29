@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"testing"
 
 	. "gopkg.in/check.v1"

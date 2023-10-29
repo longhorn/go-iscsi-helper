@@ -3,6 +3,8 @@ package iscsi
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -316,33 +318,63 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 	return dev, nil
 }
 
+func listFiles(path string) ([]string, error) {
+	var out []string
+	var walk = func(path string, entry fs.DirEntry, err error) error {
+		out = append(out, path)
+		return nil
+	}
+	err := filepath.WalkDir(path, walk)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 	for _, dir := range ScsiNodesDirs {
-		if _, err := ne.Execute("ls", []string{dir}); err != nil {
+		_, err := util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*interface{}, error) {
+			_, err := os.Stat(dir)
+			return nil, err
+		})
+		if err != nil {
 			continue
 		}
 		targetDir := filepath.Join(dir, target)
-		if _, err := ne.Execute("ls", []string{targetDir}); err != nil {
+		_, err = util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*interface{}, error) {
+			_, err := os.Stat(targetDir)
+			return nil, err
+		})
+		if err != nil {
 			continue
 		}
 		// Remove all empty files in the directory
-		output, err := ne.Execute("find", []string{targetDir})
+		output, err := util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*[]string, error) {
+			output, err := listFiles(targetDir)
+			return &output, err
+		})
 		if err != nil {
 			return errors.Wrapf(err, "failed to search iSCSI directory %v", targetDir)
 		}
-		scanner := bufio.NewScanner(strings.NewReader(output))
-		for scanner.Scan() {
-			file := scanner.Text()
-			output, err := ne.Execute("stat", []string{file})
+		for _, file := range *output {
+			output, err := util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*fs.FileInfo, error) {
+				output, err := os.Stat(file)
+				return &output, err
+			})
 			if err != nil {
 				return errors.Wrapf(err, "failed to check iSCSI node file %v", file)
 			}
-			if strings.Contains(output, "regular empty file") {
-				if _, err := ne.Execute("rm", []string{file}); err != nil {
+			if (*output).Size() == 0 && (*output).Mode().IsRegular() {
+				_, err = util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*interface{}, error) {
+					return nil, os.Remove(file)
+				})
+				if err != nil {
 					return errors.Wrapf(err, "failed to clean up empty iSCSI node file %v", file)
 				}
 				// We're trying to clean up the upper level directory as well, but won't mind if we fail
-				_, _ = ne.Execute("rmdir", []string{filepath.Dir(file)})
+				_, _ = util.ForkAndSwitchToNamespace(ne.GetNamespace(), func() (*interface{}, error) {
+					return nil, os.Remove(filepath.Dir(file))
+				})
 			}
 		}
 	}

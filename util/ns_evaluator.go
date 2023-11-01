@@ -4,17 +4,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
 var _zero uintptr
 
-func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, error)) (*T, error) {
+func ForkAndSwitchToNamespace[T interface{}](ns string, timeout time.Duration, toExecute func() (*T, error)) (*T, error) {
 	mountNs, err := unix.BytePtrFromString(filepath.Join(ns, "mnt"))
 	if err != nil {
 		return nil, err
@@ -30,6 +34,8 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init pipes")
 	}
+	logId := rand.Int()
+	fmt.Println(logId, "entering ns", ns)
 
 	pid, _, err := unix.RawSyscall(unix.SYS_FORK, 0, 0, 0)
 	if int(pid) == -1 {
@@ -41,42 +47,63 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 		// close the sending end in the parent so we don't hold it open.
 		close_raw(pipes[1])
 
-		bufSize := 256
-		bufIndex := 0
-		buf := make([]byte, bufSize)
-		for {
-			if bufIndex == bufSize {
-				// there is a better way to do this
-				buf = append(buf, make([]byte, bufSize)...)
-				bufSize *= 2
-			}
-			read, err := read(pipes[0], buf[bufIndex:])
-			if err != nil {
-				return nil, err
-			}
-			bufIndex += read
-			if read == 0 || bytes.Contains(buf[:bufIndex], []byte{0}) {
-				break
-			}
-		}
-		close_raw(pipes[0])
-		// -1 to strip terminating nul
-		if buf[bufIndex-1] != 0 {
-			return nil, errors.New("invalid termination character, not NUL")
-		}
-		out := string(buf[:bufIndex-1])
+		done := make(chan []byte)
 
-		if strings.HasPrefix(out, "err:") {
-			return nil, errors.New(strings.TrimPrefix(out, "err:"))
-		} else if strings.HasPrefix(out, "ok:") {
-			var unmarshalled T
-			err := json.Unmarshal([]byte(strings.TrimPrefix(out, "ok:")), &unmarshalled)
-			if err != nil {
-				return nil, err
+		go func() {
+			bufSize := 256
+			bufIndex := 0
+			buf := make([]byte, bufSize)
+			for {
+				if bufIndex == bufSize {
+					// there is a better way to do this
+					buf = append(buf, make([]byte, bufSize)...)
+					bufSize *= 2
+				}
+				read, err := read(pipes[0], buf[bufIndex:])
+				if err != nil {
+					logrus.Errorf("failed to read from setns pipe: %v", err)
+					done <- nil
+					return
+				}
+				bufIndex += read
+				if read == 0 || bytes.Contains(buf[:bufIndex], []byte{0}) {
+					break
+				}
 			}
-			return &unmarshalled, nil
+			close_raw(pipes[0])
+			done <- buf[:bufIndex]
+		}()
+
+		select {
+		case buf := <-done:
+			// -1 to strip terminating nul
+			if buf[len(buf)-1] != 0 {
+				return nil, errors.New("invalid termination character, not NUL")
+			}
+			out := string(buf[:len(buf)-1])
+
+			if strings.HasPrefix(out, "err:") {
+				fmt.Println(logId, "error ns", strings.TrimPrefix(out, "err:"))
+				return nil, errors.New(strings.TrimPrefix(out, "err:"))
+			} else if strings.HasPrefix(out, "ok:") {
+				var unmarshalled T
+				err := json.Unmarshal([]byte(strings.TrimPrefix(out, "ok:")), &unmarshalled)
+				if err != nil {
+					return nil, err
+				}
+				fmt.Println(logId, "exiting ns", unmarshalled)
+				return &unmarshalled, nil
+			}
+			return nil, errors.Errorf("unknown response: %s", out)
+
+		case <-time.After(timeout):
+			fmt.Println(logId, "timeout ns")
+			err = unix.Kill(int(pid), unix.SIGINT)
+			if err != nil {
+				logrus.Warnf("failed to kill setns process: %v", err)
+			}
+			return nil, errors.New("ForkAndSwitchToNamespace timed out")
 		}
-		return nil, errors.Errorf("unknown response: %s", out)
 	}
 
 	// child process executes here
@@ -86,13 +113,17 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, toExecute func() (*T, er
 	// that is why we are not using standard utilities for IO or syscalls.
 	// Files *should* be fine as they are always blocking.
 
+	runtime.LockOSThread()
+
 	err = switchNs(mountNs, netNs)
 
 	var out *T
 
+	fmt.Println(logId, "pre-exec ns")
 	if err == nil {
 		out, err = toExecute()
 	}
+	fmt.Println(logId, "postexec ns", out, err)
 
 	var msg []byte
 

@@ -81,7 +81,7 @@ func NewNamespaceExecutor(ns string) (*NamespaceExecutor, error) {
 	if ns == "" {
 		return ne, nil
 	}
-	_, err := ForkAndSwitchToNamespace(ns, func() (*interface{}, error) {
+	_, err := ForkAndSwitchToNamespace(ns, time.Second, func() (*interface{}, error) {
 		return nil, nil
 	})
 	if err != nil {
@@ -99,7 +99,7 @@ func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error)
 	if ne.ns == "" {
 		return Execute(name, args)
 	}
-	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+	out, err := ForkAndSwitchToNamespace(ne.ns, cmdTimeout, func() (*string, error) {
 		out, err := Execute(name, args)
 		return &out, err
 	})
@@ -110,7 +110,7 @@ func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name stri
 	if ne.ns == "" {
 		return ExecuteWithTimeout(timeout, name, args)
 	}
-	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+	out, err := ForkAndSwitchToNamespace(ne.ns, timeout, func() (*string, error) {
 		out, err := ExecuteWithTimeout(timeout, name, args)
 		return &out, err
 	})
@@ -121,7 +121,7 @@ func (ne *NamespaceExecutor) ExecuteWithoutTimeout(name string, args []string) (
 	if ne.ns == "" {
 		return ExecuteWithoutTimeout(name, args)
 	}
-	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+	out, err := ForkAndSwitchToNamespace(ne.ns, time.Hour, func() (*string, error) {
 		out, err := ExecuteWithoutTimeout(name, args)
 		return &out, err
 	})
@@ -188,7 +188,7 @@ func (ne *NamespaceExecutor) ExecuteWithStdin(name string, args []string, stdinS
 		return ExecuteWithStdin(name, args, stdinString)
 	}
 
-	out, err := ForkAndSwitchToNamespace(ne.ns, func() (*string, error) {
+	out, err := ForkAndSwitchToNamespace(ne.ns, cmdTimeout, func() (*string, error) {
 		out, err := ExecuteWithStdin(name, args, stdinString)
 		return &out, err
 	})

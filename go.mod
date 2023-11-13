@@ -1,6 +1,6 @@
 module github.com/longhorn/go-iscsi-helper
 
-go 1.13
+go 1.21
 
 require (
 	github.com/c9s/goprocinfo v0.0.0-20170724085704-0010a05ce49f

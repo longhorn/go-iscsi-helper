@@ -334,7 +334,7 @@ func listFiles(path string) ([]string, error) {
 func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 	for _, dir := range ScsiNodesDirs {
 		_, err := util.ForkAndSwitchToNamespace(ne.GetNamespace(), time.Minute, func() (*interface{}, error) {
-			_, err := os.Stat(dir)
+			_, err := util.NsStat(dir)
 			return nil, err
 		})
 		if err != nil {
@@ -342,7 +342,7 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 		}
 		targetDir := filepath.Join(dir, target)
 		_, err = util.ForkAndSwitchToNamespace(ne.GetNamespace(), time.Minute, func() (*interface{}, error) {
-			_, err := os.Stat(targetDir)
+			_, err := util.NsStat(targetDir)
 			return nil, err
 		})
 		if err != nil {
@@ -358,7 +358,7 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 		}
 		for _, file := range *output {
 			output, err := util.ForkAndSwitchToNamespace(ne.GetNamespace(), time.Minute, func() (*fs.FileInfo, error) {
-				output, err := os.Stat(file)
+				output, err := util.NsStat(file)
 				return &output, err
 			})
 			if err != nil {

@@ -96,6 +96,7 @@ func (ne *NamespaceExecutor) GetNamespace() string {
 }
 
 func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error) {
+	fmt.Println("Execute", name, args)
 	if ne.ns == "" {
 		return Execute(name, args)
 	}
@@ -107,29 +108,15 @@ func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error)
 }
 
 func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name string, args []string) (string, error) {
+	fmt.Println("ExecuteWithTimeout", name, args)
 	if ne.ns == "" {
 		return ExecuteWithTimeout(timeout, name, args)
 	}
 	out, err := ForkAndSwitchToNamespace(ne.ns, timeout, func() (*string, error) {
-		out, err := ExecuteWithTimeout(timeout, name, args)
+		out, err := Execute(name, args)
 		return &out, err
 	})
 	return *out, err
-}
-
-func (ne *NamespaceExecutor) ExecuteWithoutTimeout(name string, args []string) (string, error) {
-	if ne.ns == "" {
-		return ExecuteWithoutTimeout(name, args)
-	}
-	out, err := ForkAndSwitchToNamespace(ne.ns, time.Hour, func() (*string, error) {
-		out, err := ExecuteWithoutTimeout(name, args)
-		return &out, err
-	})
-	return *out, err
-}
-
-func Execute(binary string, args []string) (string, error) {
-	return ExecuteWithTimeout(cmdTimeout, binary, args)
 }
 
 func ExecuteWithTimeout(timeout time.Duration, binary string, args []string) (string, error) {
@@ -168,7 +155,7 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args []string) (st
 
 // TODO: Merge this with ExecuteWithTimeout
 
-func ExecuteWithoutTimeout(binary string, args []string) (string, error) {
+func Execute(binary string, args []string) (string, error) {
 	var err error
 	var output, stderr bytes.Buffer
 
@@ -184,6 +171,7 @@ func ExecuteWithoutTimeout(binary string, args []string) (string, error) {
 }
 
 func (ne *NamespaceExecutor) ExecuteWithStdin(name string, args []string, stdinString string) (string, error) {
+	fmt.Println("ExecuteWithTimeout", name, args)
 	if ne.ns == "" {
 		return ExecuteWithStdin(name, args, stdinString)
 	}

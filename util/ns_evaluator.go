@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 	"unsafe"
@@ -113,13 +112,13 @@ func ForkAndSwitchToNamespace[T interface{}](ns string, timeout time.Duration, t
 	// that is why we are not using standard utilities for IO or syscalls.
 	// Files *should* be fine as they are always blocking.
 
-	runtime.LockOSThread()
-
 	err = switchNs(mountNs, netNs)
+
+	// runtime.LockOSThread()
 
 	var out *T
 
-	fmt.Println(logId, "pre-exec ns")
+	fmt.Println(logId, "pre-exec ns", err)
 	if err == nil {
 		out, err = toExecute()
 	}
@@ -218,35 +217,37 @@ func close_raw(fd int) (err error) {
 }
 
 func switchNs(mountNs *byte, netNs *byte) error {
-	fd, err := open(mountNs, unix.O_RDONLY, 0644)
-	if fd < 0 && err != nil {
-		return err
-	}
-	err = setns(fd, unix.CLONE_NEWNS)
-	if err != nil {
-		close_raw(fd)
-		return err
-	}
-	err = close_raw(fd)
-	if err != nil {
-		return err
-	}
+	fmt.Println("switchNs", unix.BytePtrToString(mountNs), unix.BytePtrToString(netNs))
 
-	fd, err = open(netNs, unix.O_RDONLY, 0644)
-	if err == unix.ENOENT {
-		return nil
-	}
+	fd, err := open(netNs, unix.O_RDONLY, 0644)
+	// if err == unix.ENOENT {
+	// 	return nil
+	// }
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to open net namespace")
 	}
 	err = setns(fd, unix.CLONE_NEWNET)
 	if err != nil {
 		close_raw(fd)
-		return err
+		return errors.Wrapf(err, "failed to setns net namespace")
 	}
 	err = close_raw(fd)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to close net namespace")
+	}
+
+	fd, err = open(mountNs, unix.O_RDONLY, 0644)
+	if fd < 0 && err != nil {
+		return errors.Wrapf(err, "failed to open mount namespace")
+	}
+	err = setns(fd, unix.CLONE_NEWNS)
+	if err != nil {
+		close_raw(fd)
+		return errors.Wrapf(err, "failed to setns mount namespace")
+	}
+	err = close_raw(fd)
+	if err != nil {
+		return errors.Wrapf(err, "failed to close mount namespace")
 	}
 
 	return nil

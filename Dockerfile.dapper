@@ -8,7 +8,7 @@ ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
 # Setup environment
 ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_ENV TAG REPO
+ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST
 ENV DAPPER_OUTPUT bin
 ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/go-iscsi-helper
@@ -17,8 +17,8 @@ WORKDIR ${DAPPER_SOURCE}
 # Install packages
 RUN apt-get update && \
     apt-get install -y cmake wget curl git \
-        devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-        libconfig-general-perl libaio-dev libc6-dev iptables libltdl7
+    devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
+    libconfig-general-perl libaio-dev libc6-dev iptables libltdl7
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
@@ -26,8 +26,8 @@ RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 # Install Go & tools
 ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.14.1.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
-    go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
+RUN wget -O - https://storage.googleapis.com/golang/go1.14.1.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 # Docker
 ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/amd64/docker-ce_17.03.3~ce-0~ubuntu-xenial_amd64.deb \

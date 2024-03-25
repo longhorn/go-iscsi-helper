@@ -14,6 +14,12 @@ import (
 	"github.com/longhorn/go-iscsi-helper/iscsidev"
 	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
+
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
+	// TODO: We should NOT import this. It should be in a shared library.
+	spdkutil "github.com/longhorn/go-spdk-helper/pkg/util"
 )
 
 const (
@@ -22,6 +28,8 @@ const (
 
 	WaitInterval = time.Second
 	WaitCount    = 30
+
+	validateDiskCreationTimeout = 30 // seconds
 )
 
 type LonghornDevice struct {
@@ -35,6 +43,9 @@ type LonghornDevice struct {
 	iscsiTargetRequestTimeout int64
 
 	scsiDevice *iscsidev.Device
+	dmDevice   *lhtypes.BlockDeviceInfo
+
+	executor *lhns.Executor
 }
 
 type DeviceService interface {
@@ -63,6 +74,15 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 	if name == "" || size == 0 {
 		return nil, fmt.Errorf("invalid parameter for creating Longhorn device")
 	}
+
+	// TODO: This seems to duplicate
+	// https://github.com/longhorn/longhorn-engine/blob/6d42fb25e5761d1a316cd36bb80298acf8def189/vendor/github.com/longhorn/go-iscsi-helper/iscsidev/iscsi.go#L55-L59.
+	namespaces := []lhtypes.Namespace{lhtypes.NamespaceMnt, lhtypes.NamespaceNet}
+	nsexec, err := lhns.NewNamespaceExecutor(util.ISCSIdProcess, lhtypes.HostProcDirectory, namespaces)
+	if err != nil {
+		return nil, err
+	}
+
 	dev := &LonghornDevice{
 		RWMutex:                   &sync.RWMutex{},
 		name:                      name,
@@ -70,6 +90,8 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 		scsiTimeout:               scsiTimeout,
 		iscsiAbortTimeout:         iscsiAbortTimeout,
 		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
+
+		executor: nsexec,
 	}
 	if err := dev.SetFrontend(frontend); err != nil {
 		return nil, err
@@ -130,6 +152,9 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 				return err
 			}
 			if err := d.scsiDevice.StartInitator(); err != nil {
+				return err
+			}
+			if err := d.createLinearDMDevice(); err != nil {
 				return err
 			}
 			if err := d.createDev(); err != nil {
@@ -258,6 +283,64 @@ func (d *LonghornDevice) getDev() string {
 	return filepath.Join(DevPath, d.name)
 }
 
+// For now, try to copy implementation from
+// https://github.com/longhorn/longhorn-spdk-engine/blob/c9046e18cf8c106ce403294c6153e5057bffae1a/vendor/github.com/longhorn/go-spdk-helper/pkg/nvme/initiator.go#L504-L506.
+func (d *LonghornDevice) getDMDev() string {
+	return fmt.Sprintf("/dev/mapper/%s", d.name)
+}
+
+// For now, try to copy implementation from
+// https://github.com/longhorn/longhorn-spdk-engine/blob/c9046e18cf8c106ce403294c6153e5057bffae1a/vendor/github.com/longhorn/go-spdk-helper/pkg/nvme/initiator.go#L422-L455.
+func (d *LonghornDevice) createLinearDMDevice() error {
+	// TODO: Does this check make sense?
+	if d.scsiDevice.KernelDevice == nil {
+		return fmt.Errorf("found nil device for linear dm device creation")
+	}
+
+	scsiDevPath := fmt.Sprintf("/dev/%s", d.scsiDevice.KernelDevice.Name)
+	sectors, err := spdkutil.GetDeviceSectorSize(scsiDevPath, d.executor)
+	if err != nil {
+		return err
+	}
+
+	// Create a device mapper device with the same size as the original device.
+	table := fmt.Sprintf("0 %v linear %v 0", sectors, scsiDevPath)
+	logrus.Infof("Creating linear dm device %s with table %s", d.name, table)
+	if err := spdkutil.DmsetupCreate(d.name, table, d.executor); err != nil {
+		return err
+	}
+
+	dmDevPath := d.getDMDev()
+	if err := validateDiskCreation(dmDevPath, validateDiskCreationTimeout); err != nil {
+		return err
+	}
+
+	major, minor, err := spdkutil.GetDeviceNumbers(dmDevPath, d.executor)
+	if err != nil {
+		return err
+	}
+
+	d.dmDevice.Name = d.name
+	d.dmDevice.Major = major
+	d.dmDevice.Minor = minor
+
+	return nil
+}
+
+// For now, try to copy implementation from
+// https://github.com/longhorn/longhorn-spdk-engine/blob/c9046e18cf8c106ce403294c6153e5057bffae1a/vendor/github.com/longhorn/go-spdk-helper/pkg/nvme/initiator.go#L457-L467.
+func validateDiskCreation(path string, timeout int) error {
+	for i := 0; i < timeout; i++ {
+		isBlockDev, _ := spdkutil.IsBlockDevice(path)
+		if isBlockDev {
+			return nil
+		}
+		time.Sleep(time.Second * 1)
+	}
+
+	return fmt.Errorf("failed to validate device %s creation", path)
+}
+
 // call with lock hold
 func (d *LonghornDevice) createDev() error {
 	if _, err := os.Stat(DevPath); os.IsNotExist(err) {
@@ -274,7 +357,7 @@ func (d *LonghornDevice) createDev() error {
 		}
 	}
 
-	if err := util.DuplicateDevice(d.scsiDevice.KernelDevice, dev); err != nil {
+	if err := util.DuplicateDevice(d.dmDevice, dev); err != nil {
 		return err
 	}
 

@@ -6,7 +6,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/sys v0.18.0
+	golang.org/x/sys v0.19.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 

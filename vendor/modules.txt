@@ -18,7 +18,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
+# github.com/longhorn/go-common-libs v0.0.0-20240411093823-b8862efb8e03
 ## explicit; go 1.21
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io
@@ -43,7 +43,7 @@ github.com/power-devops/perfstat
 # github.com/rogpeppe/go-internal v1.10.0
 ## explicit; go 1.19
 github.com/rogpeppe/go-internal/fmtsort
-# github.com/shirou/gopsutil/v3 v3.24.2
+# github.com/shirou/gopsutil/v3 v3.24.3
 ## explicit; go 1.15
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk

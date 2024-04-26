@@ -76,12 +76,11 @@ func (s *TestSuite) TestFlow(c *C) {
 	t := "iqn.2014-09.io.longhorn:flow"
 	tid := 1
 	lun := 1
-	tmptid := -1
 
 	err = CheckForInitiatorExistence(s.nsexec)
 	c.Assert(err, IsNil)
 
-	tmptid, err = GetTargetTid(t)
+	tmptid, err := GetTargetTid(t)
 	c.Assert(err, IsNil)
 	c.Assert(tmptid, Equals, -1)
 

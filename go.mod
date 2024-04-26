@@ -1,8 +1,6 @@
 module github.com/longhorn/go-iscsi-helper
 
-go 1.22.0
-
-toolchain go1.22.2
+go 1.22
 
 require (
 	github.com/longhorn/go-common-libs v0.0.0-20240426033718-77710d2242df

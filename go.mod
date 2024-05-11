@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.3
 
 require (
-	github.com/longhorn/go-common-libs v0.0.0-20240501153456-f7a5b1a1edb0
+	github.com/longhorn/go-common-libs v0.0.0-20240511041328-e68a6cd889d4
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.20.0
@@ -23,7 +23,7 @@ require (
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.3 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/mount-utils v0.30.0 // indirect

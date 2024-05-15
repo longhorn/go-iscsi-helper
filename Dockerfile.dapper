@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM registry.suse.com/bci/golang:1.22
 
 ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
@@ -10,39 +10,43 @@ ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF
 ENV DAPPER_OUTPUT bin
-ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
+ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc -v /sys:/host/sys
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/go-iscsi-helper
 WORKDIR ${DAPPER_SOURCE}
 
 # Install packages
-RUN apt-get update && \
-    apt-get install -y cmake wget curl git \
-    devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-    libconfig-general-perl libaio-dev libc6-dev iptables libltdl7
+RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+    zypper --gpg-auto-import-keys ref
+
+RUN zypper -n install cmake wget curl git less file gcc open-iscsi \
+    libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc qemu-tools fuse \
+    bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
+    perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
+    libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
+    rpm-build rdma-core-devel gcc-c++ docker open-iscsi && \
+    rm -rf /var/cache/zypp/*
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
-# Install Go & tools
-ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
-    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.22.2.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local
+# Install golangci-lint
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
-# Docker
-ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/amd64/docker-ce_17.03.3~ce-0~ubuntu-xenial_amd64.deb \
-    DOCKER_URL_arm64=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/arm64/docker-ce_18.06.1~ce~3-0~ubuntu_arm64.deb \
-    DOCKER_URL=DOCKER_URL_${ARCH}
-
-RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
+# Build liblonghorn
+RUN cd /usr/src && \
+    git clone https://github.com/rancher/liblonghorn.git && \
+    cd liblonghorn && \
+    git checkout 53d1c063b95efc8d949b095bd4bf04637230265f && \
+    make; \
+    make install
 
 # Build TGT
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
     git checkout 3a8bc4823b5390e046f7aa8231ed262c0365c42c && \
-    ./scripts/build-pkg.sh deb && \
-    dpkg -i ./pkg/tgt_*.deb
+    make; \
+    make install
 
 VOLUME /tmp
 ENV TMPDIR /tmp

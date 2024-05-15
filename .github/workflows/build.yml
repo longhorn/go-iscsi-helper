@@ -1,0 +1,31 @@
+name: build
+on:
+  push:
+    branches:
+    - master
+    - v*
+    tags:
+    - v*
+  pull_request:
+jobs:
+  build:
+    name: Build binaries
+    runs-on: longhorn-infra-amd64-runners
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install curl make git
+      run: |
+        sudo apt update
+        sudo apt install -y curl make git
+
+    # Build binaries
+    - name: Run ci
+      run: make ci
+
+    - uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.out
+        flags: unittests
+        token: ${{ secrets.CODECOV_TOKEN }}

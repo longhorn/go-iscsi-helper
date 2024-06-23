@@ -1,9 +1,6 @@
 # github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 ## explicit
 github.com/c9s/goprocinfo/linux
-# github.com/go-logr/logr v1.4.1
-## explicit; go 1.18
-github.com/go-logr/logr
 # github.com/go-ole/go-ole v1.2.6
 ## explicit; go 1.12
 github.com/go-ole/go-ole
@@ -17,7 +14,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/go-common-libs v0.0.0-20240616051056-103c7d62a0d5
+# github.com/longhorn/go-common-libs v0.0.0-20240623073303-1d8b9c5efb84
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io
@@ -30,9 +27,6 @@ github.com/longhorn/go-common-libs/utils
 # github.com/mitchellh/go-ps v1.0.0
 ## explicit; go 1.13
 github.com/mitchellh/go-ps
-# github.com/moby/sys/mountinfo v0.6.2
-## explicit; go 1.16
-github.com/moby/sys/mountinfo
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -61,20 +55,3 @@ golang.org/x/sys/windows/registry
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 gopkg.in/check.v1
-# k8s.io/klog/v2 v2.120.1
-## explicit; go 1.18
-k8s.io/klog/v2
-k8s.io/klog/v2/internal/buffer
-k8s.io/klog/v2/internal/clock
-k8s.io/klog/v2/internal/dbg
-k8s.io/klog/v2/internal/serialize
-k8s.io/klog/v2/internal/severity
-k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.30.2
-## explicit; go 1.22.0
-k8s.io/mount-utils
-# k8s.io/utils v0.0.0-20230726121419-3b25d923346b
-## explicit; go 1.18
-k8s.io/utils/exec
-k8s.io/utils/io
-k8s.io/utils/keymutex

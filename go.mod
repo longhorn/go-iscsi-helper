@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.23.2
 
 require (
-	github.com/longhorn/go-common-libs v0.0.0-20241027235151-deb5e9574536
+	github.com/longhorn/go-common-libs v0.0.0-20241102040927-43901cc2fa33
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.26.0

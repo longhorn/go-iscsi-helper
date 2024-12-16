@@ -1,11 +1,11 @@
 module github.com/longhorn/go-iscsi-helper
 
-go 1.23.0
+go 1.22.7
 
 toolchain go1.23.4
 
 require (
-	github.com/longhorn/go-common-libs v0.0.0-20241216082245-2bf72d23f8b9
+	github.com/longhorn/go-common-libs v0.0.0-20241216151853-f3a20a6d8f6e
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.28.0

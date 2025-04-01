@@ -20,7 +20,7 @@ WORKDIR ${DAPPER_SOURCE}
 
 # Install packages
 RUN zypper update -y && \
-    zypper -n install glibc gcc cmake curl awk xsltproc docbook-xsl-stylesheets open-iscsi docker && \
+    zypper -n install glibc gcc cmake curl awk xsltproc docbook-xsl-stylesheets open-iscsi docker jq && \
     rm -rf /var/cache/zypp/*
 
 # needed for ${!var} substitution

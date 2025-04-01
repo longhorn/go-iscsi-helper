@@ -4,6 +4,8 @@ ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
 ARG https_proxy
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
+ARG SRC_BRANCH=main
+ARG SRC_TAG
 
 # Setup environment
 ENV PATH /go/bin:$PATH
@@ -12,6 +14,8 @@ ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF
 ENV DAPPER_OUTPUT bin
 ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/go-iscsi-helper
+ENV SRC_BRANCH ${SRC_BRANCH}
+ENV SRC_TAG ${SRC_TAG}
 WORKDIR ${DAPPER_SOURCE}
 
 # Install packages
@@ -28,23 +32,22 @@ ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${AR
 
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
 
+RUN git clone https://github.com/longhorn/dep-versions.git -b ${SRC_BRANCH} /usr/src/dep-versions && \
+    cd /usr/src/dep-versions && \
+    if [ -n "${SRC_TAG}" ] && git show-ref --tags ${SRC_TAG} > /dev/null 2>&1; then \
+        echo "Checking out tag ${SRC_TAG}"; \
+        cd /usr/src/dep-versions && git checkout tags/${SRC_TAG}; \
+    fi
+
 # Build liblonghorn
-ENV LIBLONGHORN_COMMIT_ID 53d1c063b95efc8d949b095bd4bf04637230265f
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/liblonghorn.git && \
-    cd liblonghorn && \
-    git checkout ${LIBLONGHORN_COMMIT_ID} && \
-    make; \
-    make install
+RUN export REPO_OVERRIDE="" && \
+    export COMMIT_ID_OVERRIDE="" && \
+    bash /usr/src/dep-versions/scripts/build-liblonghorn.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}"
 
 # Build tgt
-ENV TGT_COMMIT_ID 3a8bc4823b5390e046f7aa8231ed262c0365c42c
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/tgt.git && \
-    cd tgt && \
-    git checkout ${TGT_COMMIT_ID} && \
-    make; \
-    make install
+RUN export REPO_OVERRIDE="" && \
+    export COMMIT_ID_OVERRIDE="" && \
+    bash /usr/src/dep-versions/scripts/build-tgt.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}"
 
 VOLUME /tmp
 ENV TMPDIR /tmp

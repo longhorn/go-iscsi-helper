@@ -3,7 +3,7 @@ module github.com/longhorn/go-iscsi-helper
 go 1.22.7
 
 require (
-	github.com/longhorn/go-common-libs v0.0.0-20250107022351-ec79818ce8db
+	github.com/longhorn/go-common-libs 15c69217876e
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.28.0

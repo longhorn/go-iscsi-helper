@@ -1,5 +1,8 @@
 TARGETS := $(shell ls scripts)
 
+export SRC_BRANCH := main
+export SRC_TAG := $(shell git tag --points-at HEAD | head -n 1)
+
 .dapper:
 	@echo Downloading dapper
 	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp

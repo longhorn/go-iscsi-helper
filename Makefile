@@ -1,6 +1,6 @@
 TARGETS := $(shell ls scripts)
 
-export SRC_BRANCH := main
+export SRC_BRANCH := master
 export SRC_TAG := $(shell git tag --points-at HEAD | head -n 1)
 
 .dapper:

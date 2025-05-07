@@ -4,7 +4,7 @@ ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
 ARG https_proxy
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
-ARG SRC_BRANCH=main
+ARG SRC_BRANCH=master
 ARG SRC_TAG
 
 # Setup environment

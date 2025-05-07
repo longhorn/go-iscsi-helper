@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build binaries
-    runs-on: longhorn-infra-amd64-runners
+    runs-on: longhorn-infra-oracle-arm64-spdk-runners
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

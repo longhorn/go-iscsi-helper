@@ -64,7 +64,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/go-common-libs v0.0.0-20251130104056-3332521977c9
+# github.com/longhorn/go-common-libs v0.0.0-20251213114131-1a1ec1f0270e
 ## explicit; go 1.24.0
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io
@@ -97,7 +97,7 @@ github.com/sirupsen/logrus
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
+# golang.org/x/exp v0.0.0-20251209150349-8475f28825e9
 ## explicit; go 1.24.0
 golang.org/x/exp/constraints
 # golang.org/x/sys v0.37.0

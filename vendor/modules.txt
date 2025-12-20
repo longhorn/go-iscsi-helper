@@ -64,7 +64,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/go-common-libs v0.0.0-20251213114131-1a1ec1f0270e
+# github.com/longhorn/go-common-libs v0.0.0-20251218054725-dbe74d5605de
 ## explicit; go 1.24.0
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io

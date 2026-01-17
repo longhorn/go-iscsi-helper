@@ -91,8 +91,8 @@ github.com/rogpeppe/go-internal/fmtsort
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk
 github.com/shirou/gopsutil/v3/internal/common
-# github.com/sirupsen/logrus v1.9.3
-## explicit; go 1.13
+# github.com/sirupsen/logrus v1.9.4
+## explicit; go 1.17
 github.com/sirupsen/logrus
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16

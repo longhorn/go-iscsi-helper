@@ -7,7 +7,7 @@ toolchain go1.24.8
 require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/longhorn/go-common-libs v0.0.0-20260103034008-119bdcf1b2d6
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	golang.org/x/sys v0.38.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )

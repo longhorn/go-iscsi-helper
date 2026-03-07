@@ -1,12 +1,10 @@
 module github.com/longhorn/go-iscsi-helper
 
-go 1.24.0
-
-toolchain go1.24.8
+go 1.25.0
 
 require (
 	github.com/cockroachdb/errors v1.12.0
-	github.com/longhorn/go-common-libs v0.0.0-20260120075236-9a9dafa0a7ea
+	github.com/longhorn/go-common-libs v0.0.0-20260307044012-ae36fc92e72e
 	github.com/sirupsen/logrus v1.9.4
 	golang.org/x/sys v0.38.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -28,6 +26,6 @@ require (
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/text v0.31.0 // indirect
 )

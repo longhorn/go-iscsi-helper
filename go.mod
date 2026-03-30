@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cockroachdb/errors v1.12.0
-	github.com/longhorn/go-common-libs v0.0.0-20260323115845-a31a74cd171a
+	github.com/longhorn/go-common-libs v0.0.0-20260328134226-cafa38fc4ce8
 	github.com/sirupsen/logrus v1.9.4
 	golang.org/x/sys v0.38.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c

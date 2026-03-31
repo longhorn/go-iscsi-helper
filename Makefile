@@ -1,26 +1,24 @@
-TARGETS := $(shell ls scripts)
+MACHINE := longhorn
+# Define the target platforms that can be used across the ecosystem.
+DEFAULT_PLATFORMS := linux/amd64,linux/arm64
 
 export SRC_BRANCH := master
 export SRC_TAG := $(shell git tag --points-at HEAD | head -n 1)
 
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
+.PHONY: validate test ci
+validate:
+	docker buildx build --build-arg SRC_BRANCH="$(SRC_BRANCH)" --build-arg SRC_TAG="$(SRC_TAG)" --target validate -f Dockerfile .
 
-$(TARGETS): .dapper
-	./.dapper $@
+test:
+	docker buildx build --build-arg SRC_BRANCH="$(SRC_BRANCH)" --build-arg SRC_TAG="$(SRC_TAG)" --target base -t go-iscsi-helper-test -f Dockerfile .
+	docker run --privileged -v /dev:/host/dev -v /proc:/host/proc go-iscsi-helper-test ./scripts/test
 
-trash: .dapper
-	./.dapper -m bind trash
+ci:
+	docker buildx build --build-arg SRC_BRANCH="$(SRC_BRANCH)" --build-arg SRC_TAG="$(SRC_TAG)" --target ci-artifacts --output type=local,dest=. -f Dockerfile .
 
-trash-keep: .dapper
-	./.dapper -m bind trash -k
-
-deps: trash
+.PHONY: buildx-machine
+buildx-machine:
+	@docker buildx create --name=$(MACHINE) --platform=$(DEFAULT_PLATFORMS) 2>/dev/null || true
+	docker buildx inspect $(MACHINE)
 
 .DEFAULT_GOAL := ci
-
-.PHONY: $(TARGETS)

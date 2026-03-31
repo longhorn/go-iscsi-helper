@@ -1,37 +1,27 @@
-FROM registry.suse.com/bci/golang:1.25
+# syntax=docker/dockerfile:1.22.0
+FROM registry.suse.com/bci/golang:1.25 AS base
 
-ARG DAPPER_HOST_ARCH=amd64
+ARG TARGETARCH
 ARG http_proxy
 ARG https_proxy
-ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
-ARG SRC_BRANCH=master
-ARG SRC_TAG
 
 ENV GOLANGCI_LINT_VERSION=v2.11.4
 
-# Setup environment
-ENV PATH /go/bin:$PATH
-ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF
-ENV DAPPER_OUTPUT bin
-ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
-ENV DAPPER_SOURCE /go/src/github.com/longhorn/go-iscsi-helper
-ENV SRC_BRANCH ${SRC_BRANCH}
-ENV SRC_TAG ${SRC_TAG}
-WORKDIR ${DAPPER_SOURCE}
+ENV ARCH=${TARGETARCH}
+ENV GOFLAGS=-mod=vendor
+
+ARG SRC_BRANCH=master
+ARG SRC_TAG
 
 # Install packages
 RUN zypper update -y && \
-    zypper -n install glibc gcc cmake curl awk xsltproc docbook-xsl-stylesheets open-iscsi docker jq && \
+    zypper -n install glibc gcc cmake curl awk xsltproc docbook-xsl-stylesheets open-iscsi e2fsprogs jq && \
     rm -rf /var/cache/zypp/*
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
-# Install Go & tools
-ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
-    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-
+# Install golangci-lint
 RUN curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh -o /tmp/install.sh \
     && chmod +x /tmp/install.sh \
     && /tmp/install.sh -b /usr/local/bin ${GOLANGCI_LINT_VERSION}
@@ -53,7 +43,11 @@ RUN export REPO_OVERRIDE="" && \
     export COMMIT_ID_OVERRIDE="" && \
     bash /usr/src/dep-versions/scripts/build-tgt.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}"
 
-VOLUME /tmp
-ENV TMPDIR /tmp
-ENTRYPOINT ["./scripts/entry"]
-CMD ["ci"]
+WORKDIR /go/src/github.com/longhorn/go-iscsi-helper
+COPY . .
+
+FROM base AS validate
+RUN ./scripts/validate && touch /validate.done
+
+FROM scratch AS ci-artifacts
+COPY --from=validate /validate.done /validate.done

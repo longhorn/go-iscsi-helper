@@ -19,6 +19,7 @@ import (
 const (
 	SocketDirectory = "/var/run"
 	DevPath         = "/dev/longhorn/"
+	LuksDevPath     = "/dev/mapper/"
 
 	WaitInterval = time.Second
 	WaitCount    = 30
@@ -200,6 +201,10 @@ func (d *LonghornDevice) shutdownFrontend() error {
 		if err := util.RemoveDevice(dev); err != nil {
 			return errors.Wrapf(err, "device %v: failed to remove device %s", d.name, dev)
 		}
+		luksDev := d.getLuksDev()
+		if err := util.LazyUnmountDevice(luksDev); err != nil {
+			return errors.Wrapf(err, "device %v: failed to umount Luks device %s", d.name, luksDev)
+		}
 		if err := d.scsiDevice.StopInitiator(); err != nil {
 			return errors.Wrapf(err, "device %v: failed to stop iSCSI device", d.name)
 		}
@@ -256,6 +261,11 @@ func (d *LonghornDevice) GetSocketPath() string {
 // call with lock hold
 func (d *LonghornDevice) getDev() string {
 	return filepath.Join(DevPath, d.name)
+}
+
+// call with lock hold
+func (d *LonghornDevice) getLuksDev() string {
+	return filepath.Join(LuksDevPath, d.name)
 }
 
 // call with lock hold
